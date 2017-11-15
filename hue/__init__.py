@@ -393,6 +393,10 @@ class HUE(SmartPlugin):
             if hueSend == 'ct':
                 # ct darf zwischen 153 und 500 liegen
                 value = self._limit_range_int(value, 153, 500)
+            if hueSend == 'bri' and value == 0:
+                # Switch lamp off when bri==0
+                hueSend = 'on'
+                hueLampIsOn = False
                 
             if hueLampIsOn:
                 # lampe ist an (status in sh). dann können alle befehle gesendet werden
