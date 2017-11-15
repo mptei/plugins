@@ -144,10 +144,11 @@ class SQL(SmartPlugin):
             self._fdb_lock.release()
 
     def update_item(self, item, caller=None, source=None, dest=None):
-        now = self._timestamp(self._sh.now())
-        val = float(item())
-        power = int(bool(val))
-        self._buffer[item].append((now, val, power))
+        if item() is not None:
+            now = self._timestamp(self._sh.now())
+            val = float(item())
+            power = int(bool(val))
+            self._buffer[item].append((now, val, power))
 
     def _datetime(self, ts):
         return datetime.datetime.fromtimestamp(ts / 1000, self._sh.tzinfo())

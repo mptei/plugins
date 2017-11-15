@@ -389,7 +389,10 @@ class HUE():
                     if hueIndex + '.bri' in self._sendLampItems:
                         # wenn eingeschaltet wird und ein bri item vorhanden ist, dann wird auch die hellgkeit
                         # mit gesetzt, weil die lmape das im ausgeschalteten zustand vergisst.
+                        if self._sendLampItems[(hueIndex + '.bri')]() is None:
+                            self._sendLampItems[(hueIndex + '.bri')](100)
                         self._set_lamp_state(hueBridgeId, hueLampId, {'on': True, 'bri': int(self._sendLampItems[(hueIndex + '.bri')]()) , 'transitiontime': hueTransitionTime})
+                        #self._set_lamp_state(hueBridgeId, hueLampId, {'on': True, 'bri': 100 , 'transitiontime': hueTransitionTime})
                     else:
                         # ansonst wird nur eingeschaltet
                         self._set_lamp_state(hueBridgeId, hueLampId, {'on': True , 'transitiontime': hueTransitionTime})
