@@ -562,7 +562,7 @@ class HUE(SmartPlugin):
             errorItem = self._listenBridgeItems[hueBridgeId + '.' + 'errorstatus']
         else:
             errorItem = None
-            self.logger.info('_get_web_content '+hueBridgeId)
+            logger.self.logger.info('_get_web_content '+hueBridgeId)
         # dann der aufruf kompatibel, aber inhaltlich nicht identisch fetch_url aus lib.tools, daher erst eimal das fehlerobjekt nicht mehr da
         response = client.fetch_url(url, None, None, 2, 0, method, body, errorItem)
         if response:
