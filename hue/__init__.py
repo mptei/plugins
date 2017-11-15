@@ -585,134 +585,78 @@ class HUE(SmartPlugin):
     def _set_lamp_state(self, hueBridgeId, hueLampId, state):
         # hier erfolgt das setzen des status einer lampe
         # hier kommt der PUT request, um die stati an die hue bridge zu übertragen
-        self._hueLock.acquire()
-        returnValues = self._get_web_content(hueBridgeId, '/lights/%s/state' % hueLampId, 'PUT', json.dumps(state))
-        if returnValues == None:
-            self._hueLock.release()
-            return
-        # der aufruf liefert eine bestätigung zurück, was den numgesetzt werden konnte
-        for hueObject in returnValues:
-            for hueObjectStatus, hueObjectReturnString in hueObject.items():
-                if hueObjectStatus == 'success':
-                    for hueObjectReturnStringPath, hueObjectReturnStringValue in hueObjectReturnString.items():
-                        hueObjectReturnStringPathItem = hueObjectReturnStringPath.split('/')[4]
-                        # hier werden jetzt die bestätigten werte aus der rückübertragung im item gesetzt
-                        # wir gehen durch alle listen items, um die zuordnung zu machen
-                        for returnItem in self._listenLampItems:
-                            # wenn ein listen item angelegt wurde und dafür ein status zurückkam
-                            # verglichen wird mit dem referenzkey, der weiter oben aus lampid und state gebaut wurde
-                            if returnItem == (hueBridgeId + '.' + hueLampId + '.' + hueObjectReturnStringPathItem):
-                                # dafür wir der reale wert der hue bridge gesetzt
-                                if hueObjectReturnStringPathItem in self._boolKeys:
-                                    # typecast auf bool
-                                    value = bool(hueObjectReturnStringValue)
-                                elif hueObjectReturnStringPathItem in self._stringKeys:
-                                    # typecast auf string
-                                    value = str(hueObjectReturnStringValue)
-                                else:
-                                    # sonst ist es int
-                                    value = int(hueObjectReturnStringValue)
-                                self._listenLampItems[returnItem](value, 'HUE')
-                else:
-                    self.logger.warning('hue_set_lamp_state - hueObjectStatus no success:: {0}: {1} command state {2}'.format(hueObjectStatus, hueObjectReturnString, state))
-        self._hueLock.release()
+        with self._hueLock:
+            returnValues = self._get_web_content(hueBridgeId, '/lights/%s/state' % hueLampId, 'PUT', json.dumps(state))
+            if returnValues == None:
+                return
+            # der aufruf liefert eine bestätigung zurück, was den numgesetzt werden konnte
+            for hueObject in returnValues:
+                for hueObjectStatus, hueObjectReturnString in hueObject.items():
+                    if hueObjectStatus == 'success':
+                        for hueObjectReturnStringPath, hueObjectReturnStringValue in hueObjectReturnString.items():
+                            hueObjectReturnStringPathItem = hueObjectReturnStringPath.split('/')[4]
+                            # hier werden jetzt die bestätigten werte aus der rückübertragung im item gesetzt
+                            # wir gehen durch alle listen items, um die zuordnung zu machen
+                            for returnItem in self._listenLampItems:
+                                # wenn ein listen item angelegt wurde und dafür ein status zurückkam
+                                # verglichen wird mit dem referenzkey, der weiter oben aus lampid und state gebaut wurde
+                                if returnItem == (hueBridgeId + '.' + hueLampId + '.' + hueObjectReturnStringPathItem):
+                                    # dafür wir der reale wert der hue bridge gesetzt
+                                    if hueObjectReturnStringPathItem in self._boolKeys:
+                                        # typecast auf bool
+                                        value = bool(hueObjectReturnStringValue)
+                                    elif hueObjectReturnStringPathItem in self._stringKeys:
+                                        # typecast auf string
+                                        value = str(hueObjectReturnStringValue)
+                                    else:
+                                        # sonst ist es int
+                                        value = int(hueObjectReturnStringValue)
+                                    self._listenLampItems[returnItem](value, 'HUE')
+                    else:
+                        self.logger.warning('hue_set_lamp_state - hueObjectStatus no success:: {0}: {1} command state {2}'.format(hueObjectStatus, hueObjectReturnString, state))
 
     def _set_group_state(self, hueBridgeId, hueGroupId , state):
         # hier erfolgt das setzen des status einer gruppe im Moment ist nur der abruf einer szene implementiert
         # hier kommt der PUT request, um die stati an die hue bridge zu übertragen
-        self._hueLock.acquire()
-        returnValues = self._get_web_content(hueBridgeId, '/groups/%s/action' % hueGroupId, 'PUT', json.dumps(state))
-        if returnValues == None:
-            self._hueLock.release()
-            return
-        # der aufruf liefert eine bestätigung zurück, was den numgesetzt werden konnte
-        for hueObject in returnValues:
-            for hueObjectStatus, hueObjectReturnString in hueObject.items():
-                if hueObjectStatus == 'success':
-                    pass
-                else:
-                    self.logger.warning('_set_group_state - hueObjectStatus no success:: {0}: {1} command state {2}'.format(hueObjectStatus, hueObjectReturnString, state))
-        self._hueLock.release()
-
+        with self._hueLock:
+            returnValues = self._get_web_content(hueBridgeId, '/groups/%s/action' % hueGroupId, 'PUT', json.dumps(state))
+            if returnValues == None:
+                return
+            # der aufruf liefert eine bestätigung zurück, was den numgesetzt werden konnte
+            for hueObject in returnValues:
+                for hueObjectStatus, hueObjectReturnString in hueObject.items():
+                    if hueObjectStatus == 'success':
+                        pass
+                    else:
+                        self.logger.warning('_set_group_state - hueObjectStatus no success:: {0}: {1} command state {2}'.format(hueObjectStatus, hueObjectReturnString, state))
+    
     def _update_lamps(self):
         # mache ich mit der API get all lights
         # hier kommt der PUT request, um die stati an die hue bridge zu übertragen beispiel:
         numberBridgeId = 0
         while numberBridgeId < self._numberHueBridges:
             hueBridgeId = str(numberBridgeId)
-            self._hueLock.acquire()
-            returnValues = self._get_web_content(hueBridgeId, '/lights')
-            if returnValues == None:
-                self._hueLock.release()
-                return
-            # schleife über alle gefundenen lampen
-            for hueLampId, hueLampIdValues in returnValues.items():
-                # schleife über alle rückmeldungen der lampen.
-                # jetzt muss ich etwas tricksen, da die states eine ebene tiefer als die restlichen infos der lampe liegen
-                # in den items ist das aber eine flache hierachie. um nur eine schleife darüber zu haben, baue ich mir ein
-                # entsprechendes dict zusammen. 'state' ist zwar doppelt drin, stört aber nicht, da auch auf unterer ebene.
-                dictOptimized = hueLampIdValues['state'].copy()
-                dictOptimized.update(returnValues[hueLampId].items())
-                # jetzt kann der durchlauf beginnen
-                for hueObjectItem, hueObjectItemValue in dictOptimized.items():
-                    # nachdem alle objekte und werte auf die gleiche ebene gebracht wurden, beginnt die zuordnung
-                    # vor hier an werden die ganzen listen items durchgesehen und die werte aus der rückmeldung zugeordnet
-                    loop_listenLampItems = list(self._listenLampItems.keys())
-                    for returnItem in loop_listenLampItems:
-                        # wenn ein listen item angelegt wurde und dafür ein status zurückkam
-                        # verglichen wird mit dem referenzkey, der weiter oben aus lampid und state gebaut wurde
-                        if returnItem == (hueBridgeId + '.' + hueLampId + '.' + hueObjectItem):
-                            # dafür wir der reale wert der hue bridge gesetzt
-                            if hueObjectItem in self._boolKeys:
-                                value = bool(hueObjectItemValue)
-                            elif hueObjectItem in self._stringKeys:
-                                value = str(hueObjectItemValue)
-                            else:
-                                value = int(hueObjectItemValue)
-                            # wenn der wert gerade im fading ist, dann nicht überschreiben, sonst bleibt es stehen !
-                            if not self._listenLampItems[returnItem]._fading:
-                                # es werden nur die Einträge zurückgeschrieben, falls die Lampe nich im fading betrieb ist
-                                if hueObjectItem == 'bri':
-                                    # bei brightness gibt es eine fallunterscheidung
-                                    if hueBridgeId + '.' + hueLampId + '.on' in self._listenLampItems:
-                                        # geht aber nur, wenn ein solches item vorhanden ist
-                                        if self._listenLampItems[(hueBridgeId + '.' + hueLampId + '.on')]():
-                                            # die brightness darf nur bei lamp = on zurückgeschrieben werden, den bei aus ist sie immer 0
-                                            self._listenLampItems[returnItem](value, 'HUE')
-                                else:
-                                    # bei allen anderen kann zurückgeschrieben werden
-                                    self._listenLampItems[returnItem](value, 'HUE')
-            self._hueLock.release()
-            numberBridgeId = numberBridgeId + 1
-
-    def _update_groups(self):
-        # mache ich mit der API get all groups
-        # hier kommt der PUT request, um die stati an die hue bridge zu übertragen beispiel:
-        numberBridgeId = 0
-        while numberBridgeId < self._numberHueBridges:
-            hueBridgeId = str(numberBridgeId)
-            self._hueLock.acquire()
-            returnValues = self._get_web_content(hueBridgeId, '/groups')
-            if returnValues == None:
-                self._hueLock.release()
-                return
-            # schleife über alle gefundenen lampen
-            for hueGroupId, hueGroupIdValues in returnValues.items():
-                # schleife über alle rückmeldungen der lampen.
-                # jetzt muss ich etwas tricksen, da die states eine ebene tiefer als die restlichen infos der lampe liegen
-                # in den items ist das aber eine flache hierachie. um nur eine schleife darüber zu haben, baue ich mir ein
-                # entsprechendes dict zusammen. 'state' ist zwar doppelt drin, stört aber nicht, da auch auf unterer ebene.
-                if 'state' in hueGroupIdValues:
-                    dictOptimized = hueGroupIdValues['state'].copy()
-                    dictOptimized.update(returnValues[hueGroupId].items())
+            with self._hueLock:
+                returnValues = self._get_web_content(hueBridgeId, '/lights')
+                if returnValues == None:
+                    return
+                # schleife über alle gefundenen lampen
+                for hueLampId, hueLampIdValues in returnValues.items():
+                    # schleife über alle rückmeldungen der lampen.
+                    # jetzt muss ich etwas tricksen, da die states eine ebene tiefer als die restlichen infos der lampe liegen
+                    # in den items ist das aber eine flache hierachie. um nur eine schleife darüber zu haben, baue ich mir ein
+                    # entsprechendes dict zusammen. 'state' ist zwar doppelt drin, stört aber nicht, da auch auf unterer ebene.
+                    dictOptimized = hueLampIdValues['state'].copy()
+                    dictOptimized.update(returnValues[hueLampId].items())
                     # jetzt kann der durchlauf beginnen
                     for hueObjectItem, hueObjectItemValue in dictOptimized.items():
                         # nachdem alle objekte und werte auf die gleiche ebene gebracht wurden, beginnt die zuordnung
                         # vor hier an werden die ganzen listen items durchgesehen und die werte aus der rückmeldung zugeordnet
-                        for returnItem in self._listenGroupItems:
+                        loop_listenLampItems = list(self._listenLampItems.keys())
+                        for returnItem in loop_listenLampItems:
                             # wenn ein listen item angelegt wurde und dafür ein status zurückkam
                             # verglichen wird mit dem referenzkey, der weiter oben aus lampid und state gebaut wurde
-                            if returnItem == (hueBridgeId + '.' + hueGroupId + '.' + hueObjectItem):
+                            if returnItem == (hueBridgeId + '.' + hueLampId + '.' + hueObjectItem):
                                 # dafür wir der reale wert der hue bridge gesetzt
                                 if hueObjectItem in self._boolKeys:
                                     value = bool(hueObjectItemValue)
@@ -721,19 +665,67 @@ class HUE(SmartPlugin):
                                 else:
                                     value = int(hueObjectItemValue)
                                 # wenn der wert gerade im fading ist, dann nicht überschreiben, sonst bleibt es stehen !
-                                if not self._listenGroupItems[returnItem]._fading:
+                                if not self._listenLampItems[returnItem]._fading:
                                     # es werden nur die Einträge zurückgeschrieben, falls die Lampe nich im fading betrieb ist
                                     if hueObjectItem == 'bri':
                                         # bei brightness gibt es eine fallunterscheidung
-                                        if hueBridgeId + '.' + hueGroupId + '.on' in self._listenGroupItems:
+                                        if hueBridgeId + '.' + hueLampId + '.on' in self._listenLampItems:
                                             # geht aber nur, wenn ein solches item vorhanden ist
-                                            if self._listenGroupItems[(hueBridgeId + '.' + hueGroupId + '.on')]():
+                                            if self._listenLampItems[(hueBridgeId + '.' + hueLampId + '.on')]():
                                                 # die brightness darf nur bei lamp = on zurückgeschrieben werden, den bei aus ist sie immer 0
-                                                self._listenGroupItems[returnItem](value, 'HUE')
+                                                self._listenLampItems[returnItem](value, 'HUE')
                                     else:
                                         # bei allen anderen kann zurückgeschrieben werden
                                         self._listenLampItems[returnItem](value, 'HUE')
-            self._hueLock.release()
+            numberBridgeId = numberBridgeId + 1
+
+    def _update_groups(self):
+        # mache ich mit der API get all groups
+        # hier kommt der PUT request, um die stati an die hue bridge zu übertragen beispiel:
+        numberBridgeId = 0
+        while numberBridgeId < self._numberHueBridges:
+            hueBridgeId = str(numberBridgeId)
+            with self._hueLock:
+                returnValues = self._get_web_content(hueBridgeId, '/groups')
+                if returnValues == None:
+                    return
+                # schleife über alle gefundenen lampen
+                for hueGroupId, hueGroupIdValues in returnValues.items():
+                    # schleife über alle rückmeldungen der lampen.
+                    # jetzt muss ich etwas tricksen, da die states eine ebene tiefer als die restlichen infos der lampe liegen
+                    # in den items ist das aber eine flache hierachie. um nur eine schleife darüber zu haben, baue ich mir ein
+                    # entsprechendes dict zusammen. 'state' ist zwar doppelt drin, stört aber nicht, da auch auf unterer ebene.
+                    if 'state' in hueGroupIdValues:
+                        dictOptimized = hueGroupIdValues['state'].copy()
+                        dictOptimized.update(returnValues[hueGroupId].items())
+                        # jetzt kann der durchlauf beginnen
+                        for hueObjectItem, hueObjectItemValue in dictOptimized.items():
+                            # nachdem alle objekte und werte auf die gleiche ebene gebracht wurden, beginnt die zuordnung
+                            # vor hier an werden die ganzen listen items durchgesehen und die werte aus der rückmeldung zugeordnet
+                            for returnItem in self._listenGroupItems:
+                                # wenn ein listen item angelegt wurde und dafür ein status zurückkam
+                                # verglichen wird mit dem referenzkey, der weiter oben aus lampid und state gebaut wurde
+                                if returnItem == (hueBridgeId + '.' + hueGroupId + '.' + hueObjectItem):
+                                    # dafür wir der reale wert der hue bridge gesetzt
+                                    if hueObjectItem in self._boolKeys:
+                                        value = bool(hueObjectItemValue)
+                                    elif hueObjectItem in self._stringKeys:
+                                        value = str(hueObjectItemValue)
+                                    else:
+                                        value = int(hueObjectItemValue)
+                                    # wenn der wert gerade im fading ist, dann nicht überschreiben, sonst bleibt es stehen !
+                                    if not self._listenGroupItems[returnItem]._fading:
+                                        # es werden nur die Einträge zurückgeschrieben, falls die Lampe nich im fading betrieb ist
+                                        if hueObjectItem == 'bri':
+                                            # bei brightness gibt es eine fallunterscheidung
+                                            if hueBridgeId + '.' + hueGroupId + '.on' in self._listenGroupItems:
+                                                # geht aber nur, wenn ein solches item vorhanden ist
+                                                if self._listenGroupItems[(hueBridgeId + '.' + hueGroupId + '.on')]():
+                                                    # die brightness darf nur bei lamp = on zurückgeschrieben werden, den bei aus ist sie immer 0
+                                                    self._listenGroupItems[returnItem](value, 'HUE')
+                                        else:
+                                            # bei allen anderen kann zurückgeschrieben werden
+                                            self._listenLampItems[returnItem](value, 'HUE')
             numberBridgeId = numberBridgeId + 1
 
     def _update_bridges(self):
@@ -741,35 +733,33 @@ class HUE(SmartPlugin):
         numberBridgeId = 0
         while numberBridgeId < self._numberHueBridges:
             hueBridgeId = str(numberBridgeId)
-            self._hueLock.acquire()
-            returnValues = self._get_web_content(hueBridgeId, '/config')
-            if returnValues == None:
-                self._hueLock.release()
-                return
-            # schleife über alle gefundenen lampen
-            for hueObjectItem, hueObjectItemValue in returnValues.items():
-                # nachdem alle objekte und werte auf die gleiche ebene gebracht wurden, beginnt die zuordnung
-                # vor hier an werden die ganzen listen items durchgesehen und die werte aus der rückmeldung zugeordnet
-                for returnItem in self._listenBridgeItems:
-                    # wenn ein listen item angelegt wurde und dafür ein status zurückkam
-                    # verglichen wird mit dem referenzkey, der weiter oben aus lampid und state gebaut wurde
-                    if hueObjectItem == 'swversion':
-                        hueObjectItem = 'bridge_swversion'
-                    if hueObjectItem == 'name':
-                        hueObjectItem = 'bridge_name'
-                    if returnItem == (hueBridgeId + '.' + hueObjectItem):
-                        # dafür wir der reale wert der hue bridge gesetzt
-                        if hueObjectItem in self._boolKeys:
-                            value = bool(hueObjectItemValue)
-                        elif hueObjectItem in self._stringKeys:
-                            value = str(hueObjectItemValue)
-                        elif hueObjectItem in self._dictKeys:
-                            value = dict(hueObjectItemValue)
-                        else:
-                            value = int(hueObjectItemValue)
-                        # wenn der wert gerade im fading ist, dann nicht überschreiben, sonst bleibt es stehen !
-                        self._listenBridgeItems[returnItem](value, 'HUE')
-            self._hueLock.release()
+            with self._hueLock:
+                returnValues = self._get_web_content(hueBridgeId, '/config')
+                if returnValues == None:
+                    return
+                # schleife über alle gefundenen lampen
+                for hueObjectItem, hueObjectItemValue in returnValues.items():
+                    # nachdem alle objekte und werte auf die gleiche ebene gebracht wurden, beginnt die zuordnung
+                    # vor hier an werden die ganzen listen items durchgesehen und die werte aus der rückmeldung zugeordnet
+                    for returnItem in self._listenBridgeItems:
+                        # wenn ein listen item angelegt wurde und dafür ein status zurückkam
+                        # verglichen wird mit dem referenzkey, der weiter oben aus lampid und state gebaut wurde
+                        if hueObjectItem == 'swversion':
+                            hueObjectItem = 'bridge_swversion'
+                        if hueObjectItem == 'name':
+                            hueObjectItem = 'bridge_name'
+                        if returnItem == (hueBridgeId + '.' + hueObjectItem):
+                            # dafür wir der reale wert der hue bridge gesetzt
+                            if hueObjectItem in self._boolKeys:
+                                value = bool(hueObjectItemValue)
+                            elif hueObjectItem in self._stringKeys:
+                                value = str(hueObjectItemValue)
+                            elif hueObjectItem in self._dictKeys:
+                                value = dict(hueObjectItemValue)
+                            else:
+                                value = int(hueObjectItemValue)
+                            # wenn der wert gerade im fading ist, dann nicht überschreiben, sonst bleibt es stehen !
+                            self._listenBridgeItems[returnItem](value, 'HUE')
             numberBridgeId = numberBridgeId + 1
 
 
