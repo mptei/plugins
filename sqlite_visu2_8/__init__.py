@@ -147,7 +147,11 @@ class SQL(SmartPlugin):
             else:
                 last_change = self._timestamp(self._sh.now())
                 item._sqlite_last = last_change
-                self._execute("INSERT OR IGNORE INTO cache VALUES('{}',{},{})".format(item.id(), last_change, float(item())))
+                if item() is not None:
+                    value = float(item())
+                else:
+                    value = None
+                self._execute("INSERT OR IGNORE INTO cache VALUES('{}',{},{})".format(item.id(), last_change, value))
             self._buffer[item] = []
             item.series = functools.partial(self._series, item=item.id())
             item.db = functools.partial(self._single, item=item.id())
@@ -176,8 +180,12 @@ class SQL(SmartPlugin):
         _start = self._timestamp(item.prev_change())
         _end = self._timestamp(item.last_change())
         _dur = _end - _start
-        _avg = float(item.prev_value())
-        _on = int(bool(_avg))
+        if item.prev_value() is not None:
+            _avg = float(item.prev_value())
+            _on = int(bool(_avg))
+        else:
+            _avg = None
+            _on = None
         self._buffer[item].append((_start, _dur, _avg, _on))
         if _end - item._sqlite_last > self._buffer_time:
             self._insert(item)
