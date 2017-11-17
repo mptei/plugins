@@ -857,7 +857,10 @@ class Backend:
             thread['sort'] = str(t.name).lower()
             thread['name'] = t.name
             thread['id'] = t.ident
-            thread['alive'] = t.is_alive()
+            try:
+                thread['alive'] = t.is_alive()
+            except:
+                thread['alive'] = None
             threads.append(thread)
         threads_sorted = sorted(threads, key=lambda k: k['sort'])
         threads_count = len(threads_sorted)
