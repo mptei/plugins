@@ -42,8 +42,9 @@ class HUE():
 
         # parameter zu übergabe aus der konfiguration pulgin.conf
         self._sh = smarthome
+        logger.info('Init HUE')
         # parmeter übernehmen, aufteilen
-        if type(hue_ip) == 'list':
+        if isinstance(hue_ip, list):
             self._hue_ip = hue_ip
             self._hue_user = hue_user
             self._hue_port = hue_port
@@ -362,7 +363,7 @@ class HUE():
             if hueIndex + '.on' in self._sendLampItems:
                 hueLampIsOn = self._sendLampItems[(hueIndex + '.on')]()
             else:
-                logger.warning('HUE: update_lamp_item: no item for on/off defined for bridge {0} lampe {1}'.format(hueBridgeId, hueLampId))
+                logger.warning('HUE: update_lamp_item: [{0}]: no item for on/off defined for bridge {1} lamp {2}'.format(item, hueBridgeId, hueLampId))
                 hueLampIsOn = False
                 
             # test aus die wertgrenzen, die die bridge verstehen kann
@@ -400,7 +401,7 @@ class HUE():
                     else:
                         # ansonst wird nur eingeschaltet
                         self._set_lamp_state(hueBridgeId, hueLampId, {'on': True , 'transitiontime': hueTransitionTime})
-                        logger.info('HUE: update_lamp_item: no bri item defined for restoring the brightness after swiching on again')                        
+                        logger.info('HUE: update_lamp_item: [{0}]: no bri item defined for restoring the brightness after swiching on again'.format(item))                        
                 else:
                     # anderer befehl gegeben
                     if hueSend in self._rgbKeys:
@@ -415,7 +416,7 @@ class HUE():
                             # und jetzt der wert setzen
                             self._set_lamp_state(hueBridgeId, hueLampId, {'xy': xyPoint, 'transitiontime': hueTransitionTime})
                         else:
-                            logger.warning('HUE: update_lamp_item: on or more of the col... items around item [{0}] is not defined'.format(item))
+                            logger.warning('HUE: update_lamp_item: [{0}]: one or more of the col... items are not defined'.format(item))
                     else:
                         # standardbefehle
                         self._set_lamp_state(hueBridgeId, hueLampId, {hueSend: value, 'transitiontime': hueTransitionTime})
@@ -480,7 +481,7 @@ class HUE():
                     else:
                         # ansonst wird nur eingeschaltet
                         self._set_group_state(hueBridgeId, hueGroupId, {'on': True , 'transitiontime': hueTransitionTime})
-                        logger.info('HUE: update_lamp_item: no bri item defined for restoring the brightness after swiching on again')                        
+                        logger.info('HUE: update_lamp_item: [{0}]: no bri item defined for restoring the brightness after swiching on again'.format(item))                        
                 else:
                     # standardbefehle
                     self._set_group_state(hueBridgeId, hueGroupId, {hueSendGroup: value, 'transitiontime': hueTransitionTime})
