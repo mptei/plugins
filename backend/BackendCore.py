@@ -484,8 +484,14 @@ class Backend:
                 prev_value = str(prev_value)
 
             if 'str' in item.type():
-                value = html.escape(value)
-                prev_value = html.escape(prev_value)
+                if value is None:
+                    value = 'None'
+                else:
+                    value = html.escape(value) 
+                if prev_value is None:
+                    prev_value = 'None'
+                else:
+                    prev_value = html.escape(prev_value)
 
             cycle = ''
             crontab = ''
