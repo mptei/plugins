@@ -28,6 +28,16 @@ parameters:
             de: 'IP Adresse, falls nicht auf allen IPs des Hosts gelauscht werden soll'
             en: 'ip address to use, if not listening on all ip addresses of the host'
 
+    proto:
+        type: str
+        default: TCP
+        valid_list:
+          - TCP
+          - TCP6
+        description:
+            de: 'TCP protocol'
+            en: 'TCP protocol'
+    
     port:
         type: int
         default: 2424
