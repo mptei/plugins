@@ -82,11 +82,14 @@ class WebSocket(SmartPlugin):
         self.acl = self.get_parameter_value('acl')
         self.wsproto = self.get_parameter_value('wsproto')
         self.querydef = self.get_parameter_value('querydef')
+        self.proto = self.get_parameter_value('proto')
 
         if self.acl in ('true', 'yes'):
             self.acl = 'rw'
 
-        self.websocket = _websocket(self.get_sh(), self, self.ip, self.port, self.tls, self.wsproto, self.querydef)
+        if self.proto == 'TCP6' and self.ip=='0.0.0.0':
+            self.ip='::'
+        self.websocket = _websocket(self.get_sh(), self, self.ip, self.port, self.tls, self.wsproto, self.querydef, self.proto)
 
         self.init_webinterface()
 
@@ -270,9 +273,9 @@ class WebInterface(SmartPluginWebIf):
         for clientinfo in self.plugin.return_clients():
             c = clientinfo.get('addr', '')
             client = dict()
-            deli = c.find(':')
-            client['ip'] = c[0:c.find(':')]
-            client['port'] = c[c.find(':') + 1:]
+            deli = c.rfind(':')
+            client['ip'] = c[0:deli]
+            client['port'] = c[deli + 1:]
             try:
                 client['name'] = socket.gethostbyaddr(client['ip'])[0]
             except:
@@ -311,8 +314,8 @@ class _websocket(lib.connection.Server):
     Websocket specific class of the Plugin. Handles the websocket connections
     """
 
-    def __init__(self, sh, plugin, ip, port, tls, wsproto, querydef ):
-        lib.connection.Server.__init__(self, ip, port)
+    def __init__(self, sh, plugin, ip, port, tls, wsproto, querydef, proto ):
+        lib.connection.Server.__init__(self, ip, port, proto)
         self.logger = logging.getLogger(__name__)
         self._sh = sh
         self.shtime = plugin.shtime
