@@ -55,7 +55,7 @@ class WebSocket(SmartPlugin):
         return result
 
 
-    def __init__(self, smarthome, ip='0.0.0.0', port=2424, tls='no', acl='ro', wsproto='3' ):
+    def __init__(self, smarthome, ip='0.0.0.0', port=2424, tls='no', acl='ro', wsproto='3', proto='TCP' ):
         self.logger = logging.getLogger(__name__)
         self._sh = smarthome
 
@@ -80,12 +80,14 @@ class WebSocket(SmartPlugin):
             self.logger.error("WebSocket: Invalid value '"+str(alc)+"' configured for attribute acl in plugin.conf, using '"+str(self.acl)+"' instead")
 
         if self.is_int(wsproto):
-        	proto = int(wsproto)
+        	wsprotoi = int(wsproto)
         else:
-            proto = 3
+            wsprotoi = 3
             self.logger.error("WebSocket: Invalid value '"+str(wsproto)+"' configured for attribute wsproto in plugin.conf, using '"+str(proto)+"' instead")
 
-        self.websocket = _websocket(smarthome, ip, port, self.tls, proto)
+        if proto == 'TCP6' and ip=='0.0.0.0':
+            ip='::'
+        self.websocket = _websocket(smarthome, ip, port, self.tls, wsprotoi, proto)
         
 
     def run(self):
@@ -154,8 +156,8 @@ class _websocket(lib.connection.Server):
     Websocket specific class of the Plugin. Handles the websocket connections
     """
 
-    def __init__(self, smarthome, ip, port, tls, wsproto ):
-        lib.connection.Server.__init__(self, ip, port)
+    def __init__(self, smarthome, ip, port, tls, wsproto, proto ):
+        lib.connection.Server.__init__(self, ip, port, proto)
         self.logger = logging.getLogger(__name__)
         self._sh = smarthome
         self.tls = tls
