@@ -1,0 +1,153 @@
+/**
+* Widget for usage of uzsu plugin
+* (c) Michael Würtenberger 2014, 2015, 2016
+*
+* responsive v5.0
+*
+* läuft zusammen mit dem visu.js (responsive) ab v5.0
+* läuft zusammen mit smartvisu ab v2.8
+*
+* @param unique id for this widget
+* @param a gad/item
+* @param headline for popup (optional), default UZSZ
+* @param designType for popup design (optional), default = '0', 
+*												 FHEM = '2', like default
+* @param pic on (optional), default icon is a clock
+* @param pic off (optional), default icon is a clock
+* @param valueType (optional), default = bool, supported types are 'bool', 'num', 'text', 'list'
+* @param valueParameterList (optional), default set in js depending on valueType
+* @param optional color
+*/
+
+{% macro uzsu_icon(id, gad_uzsu, gad_headline, gad_designType, pic_on, pic_off, gad_valueType, gad_valueParameterList, gad_color) %}
+/**
+* styles in das widget, damit solange das widget nicht integriert ist, alles in einer datei verbleibt
+*/
+<style>
+.uzsuPopupContent{
+    width:100%;
+    height:100%;
+}
+.uzsuPopupHeader{
+    font-size:2em;
+    text-align:center;
+    margin-bottom:20px;
+}
+.uzsuRow{
+	clear: both;
+    height:60px;
+}
+.uzsuRowExpert, .uzsuRowHoliday, .uzsuRowCondition, .uzsuRowDelayedExec{
+    height:60px;
+    border:1px dotted;
+    margin-bottom:20px;
+    margin-left:20px;
+    margin-right:10px;
+}
+.uzsuRowExpHoli:after{
+	clear: both;
+	content: " ";
+   	display: block; 
+   	height: 0;
+}
+.uzsuRowExpertText, .uzsuRowHolidayText, .uzsuRowConditionText, .uzsuRowDelayedExecText{
+	height: 0em;
+    font-size: 0.7em;
+    position: relative; 
+    top: 5em; 
+    left: -1.5em; 
+    transform: rotate(270deg);  
+	transform-origin:0em 0em; 
+}
+.uzsuRowFooter{
+    clear:both;
+    height:60px;
+    margin-top:20px;
+}
+.uzsuCell, .uzsuCellExpert{  
+    float:left;
+    height:50px;
+    margin:3px;
+}
+.uzsuCellType1{  
+    float:left;
+    height:80px;
+    margin:3px;
+}
+.uzsuCellText{  
+    height:0.8em;
+    font-size:0.7em;
+}
+.uzsuClear:after{
+    content: "";
+    clear: both;
+    display: table;
+}
+.uzsuTimeInput, .uzsuTimeMaxMinInput, .uzsuTimeOffsetInput, .uzsuValueInput{
+    width: 50px !important;
+    padding: 0.1em !important;
+}
+.uzsuConditionValueInput, .uzsuDelayedExecValueInput{
+    width: 70px !important;
+    padding: 0.1em !important;
+}
+.uzsuConditionDeviceStringInput, .uzsuDelayedExecDeviceStringInput{
+    width: 250px !important;
+    padding: 0.1em !important;
+}
+div.ui-input-text{
+	height: 30px;
+  	margin: .25em 0;
+}
+div.ui-slider-switch{
+	top: 1px !important;
+}
+.uzsuCellExpert div.ui-btn{
+	top:3px !important;
+}
+.ui-disable{
+	opacity: 0.7 !important;
+}
+.uzsuEvent, .uzsuConditionActive, .uzsuDelayedExecActive, .uzsuListInput{
+	margin: .25em 0 !important;
+	width: 100px;
+	padding: 0 !important;
+}
+.uzsuTextWideInput{
+	width: 350px !important;
+}
+@media screen and (max-width: 625px){
+    .uzsuRowExpert, .uzsuRowHoliday, .uzsuRowCondition, .uzsuRowDelayedExec, .uzsuCellExpert{
+        display: none;    
+    }
+}
+html[data-useragent*='Chrome'] .uzsuTimeInput, .uzsuTimeMaxMinInput, .uzsuTimeOffsetInput, .uzsuValueInput{
+	width:70px !important;
+}
+</style>
+
+	<span 
+		id="{{ uid(page, id) }}" 
+		data-widget="uzsu.uzsu_icon" 
+		data-item="{{ gad_uzsu }}" 
+		data-headline="{{ gad_headline|default('UZSU') }}" 
+		data-designType="{{ gad_designType | default('0') }}"
+		data-pic-on="{{ pic_on|deficon('time_timer_switch.svg') }}" 
+		data-pic-off="{{ pic_off|deficon('time_timer_switch.svg')}}"
+		data-valueType="{{ gad_valueType|default('bool') }}"
+		data-valueParameterList="{{ implode(gad_valueParameterList) }}"
+		class="switch icon">
+		<a>
+			<img id="{{ uid(page, id) }}-off" class="icon" src="{{ pic_off|deficon('time_timer_switch.svg') }}" />
+			{% if gad_color is empty  %}
+       				<img id="{{ uid(page, id) }}-on" class="icon icon1 hide" src="{{ pic_on|deficon('time_timer_switch.svg') }}" />
+			{% elseif gad_color == 'icon1' %}
+				<img id="{{ uid(page, id) }}-on" class="icon icon1 hide" src="{{ pic_on|deficon('time_timer_switch.svg') }}" />
+			{% else %}
+				<img id="{{ uid(page, id) }}-on" class="icon icon1 hide" style="stroke:{{ color }}; fill:{{ color }};" src="{{ pic_on|deficon('time_timer_switch.svg') }}" />
+			{% endif %}
+		</a>
+	</span>
+	
+{% endmacro %}
+
