@@ -1,0 +1,55 @@
+/**
+ * -----------------------------------------------------------------------------
+ * @package     smartVISU
+ * @author      Martin Gleiß
+ * @copyright   2012
+ * @license     GPL <http://www.gnu.de>
+ * -----------------------------------------------------------------------------
+ */
+
+/**
+ * Denon AVR Widget
+ * (c) 2015 Michael Würtenberger
+ * 
+ * @param       unique id for this widget
+ * @param       the gad/item for the power (optional)
+ * @param       the gad/item for the volume (optional)
+ * @param       the gad/item for the mute (optional)
+ * @param       the gad/item for the song title (optional)
+ * @param       the gad/item to set surround mode (optional)
+ * @param       the gad/item to set input (optional)
+ *
+ * derived from "multimedia" by Axel Otterstätter - thanks!
+ * Slider herausgenommen !
+ */
+{% macro control(id, gad_power, gad_vol, gad_mute, gad_title, gad_surrmode, gad_input) %}
+    {% import "basic.html" as basic %}
+    {% set uid = uid(page, id) %}
+
+    <div id="{{ uid }}" class="music">
+        <div class="vol">
+            <img class="slider-bottomup-scale" src="pages/base/pics/scale_buttomup.png">
+            {{ basic.slider(id~'vol', gad_vol, 0, 99, 1, 'bottomup') }}
+        </div>
+        <div class="control">
+	        {{ basic.dual(id~'power', gad_power, icon1~'control_standby.png', icon0~'control_standby.png') }}
+	        {{ basic.dual(id~'mute', gad_mute, icon1~'audio_volume_mute.png', icon0~'audio_volume_mute.png', 1, 0) }}
+        </div>
+        <div class="title">
+			{{ basic.value(id~'input', gad_input) }} <br>
+			{{ basic.value(id~'title', gad_title) }}
+        </div>
+		<div class="set">
+			<div class="set_status">
+				{{ basic.value(id~'surrmode_status', gad_surrmode) }}
+			</div>
+			<div data-role="controlgroup" data-type="horizontal">
+			 	{{ basic.button(id~'surrmode_stereo', gad_surrmode,'Stereo','','MSSTEREO') }}
+			 	{{ basic.button(id~'surrmode_dolby', gad_surrmode,'Dolby','','MSDOLBY DIGITAL') }}
+			 	{{ basic.button(id~'surrmode_dts', gad_surrmode,'DTS','','MSDTS SURROUND') }}
+			 	{{ basic.button(id~'surrmode_rock', gad_surrmode,'Rock','','MSROCK ARENA') }}
+			 	{{ basic.button(id~'surrmode_jazz', gad_surrmode,'Jazz','','MSJAZZ CLUB') }}
+			</div>
+		</div>
+	</div>
+{% endmacro %}
