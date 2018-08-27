@@ -1,0 +1,12 @@
+ZONE;FUNCTION;SEND;QUERY;RESPONSE;READWRITE;INVERTRESPONSE;MAXVALUE;TYPE
+0;power on;PWON|PWON;PW?;PW**;RW;no;1;bool
+0;power off;PWSTANDBY;PW?;PW***;RW;no;1;bool
+1;power on;ZMON;ZM?;ZM**;RW
+1;power off;ZMOFF;ZM?;ZM***;RW
+1;mute on;MUON;MU?;MU**;RW
+1;mute off;MUOFF;MU?;MU***;RW
+1;volume set;MV**;MV?;MV**;RW
+1;volume+;MVUP;MV?;MV;W
+1;volume-;MVDOWN;MV?;MV;W
+1;source;SI*;SI?;SI*******;R;;;str
+0;statusupdate;;;;W
