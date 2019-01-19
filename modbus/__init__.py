@@ -24,9 +24,32 @@ from pymodbus.client.sync import ModbusTcpClient, ModbusSerialClient
 from pymodbus.payload import BinaryPayloadDecoder
 from pymodbus.payload import Endian
 
+# Class holding information about type
+class MBType:
+    def __init__(self, name, wordlen, decoder, encoder):
+        self.name = name
+        self.wordlen = wordlen
+        self.decoder = decoder
+        self.encoder = encoder
+
+    def decode(self, raw):
+        return self.decoder(raw)
+
+    def encode(self, value):
+        return self.encoder(value)
+
+class Range:
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
+
 class Modbus(SmartPlugin):
     PLUGIN_VERSION = "0.0.0.1"
     ALLOW_MULTIINSTANCE = False
+    types = {
+             'INT16LE': MBType('INT16LE', 1, lambda x: x[0], lambda x: [x]),
+             'FP32LE': MBType('FP32LE', 2, lambda x: struct.unpack('>f',struct.pack('>HH',*x))[0], lambda x: struct.unpack('>HH', struct.pack('>f', *x)))
+            }
 
     def __init__(self, smarthome, connection, port="", update_cycle="30"):
         self._sh = smarthome
@@ -39,40 +62,46 @@ class Modbus(SmartPlugin):
             self.connect = lambda : ModbusSerialClient (method="rtu", port=connection, baudrate=9600, stopbits=1, bytesize=8, timeout=1)
             
         self._cycle = int(update_cycle)
-        self.my_reg_items = []
-        self.mbitems = []
-        self.addrmap = {}
         self.units = {}
         self._lockmb = threading.Lock()    # modbus serial port lock
-        #self._sh.scheduler.add(__name__, self._read_modbus, prio=5, cycle=int(update_cycle))
         self.fun_dict = {'INPUT':0x04,'HOLDING':0x10}
-        self.type_dict = {'INT16LE':1,'FP32LE':2}
-        self.typeparser_dict = {'INT16LE':lambda x: x[0], 'FP32LE':lambda x: struct.unpack('>f',struct.pack('>HH',*x))[0]}
+        self._sh.scheduler.add(__name__, self._read_modbus, prio=5, cycle=int(update_cycle))
 
     # Called regularly to update modbus values
     def _read_modbus(self):
         self._lockmb.acquire()
         try:
-            client = self.connect()
             for unit in self.units:
                 funs = self.units[unit]
                 for fun in funs:
-                    addrs = funs[fun]
-                    for addr in addrs:
-                        mbitem = addrs[addr]
+                    client = self.connect()
+                    (mbitems,ranges) = funs[fun]
+                    for myrange in ranges:
+                        regcnt = myrange.end - myrange.start
                         rq = None
                         if fun == 4:
-                            rq = client.read_input_registers(addr, self.type_dict[mbitem.datatype], unit=unit)
+                            rq = client.read_input_registers(myrange.start, regcnt, unit=unit)
                         elif fun == 16:
-                            rq = client.read_holding_registers(addr, self.type_dict[mbitem.datatype], unit=unit)
+                            rq = client.read_holding_registers(myrange.start, regcnt, unit=unit)
                         if rq.isError():
                             self.logger.error('Failed to read input registers')
                             break
-                        self.logger.debug('read')
-                        value = self.typeparser_dict[mbitem.datatype](rq.registers)
-                        for item in mbitem.items:
-                            item(value, self.get_shortname(), "Modbus unit={}, addr={}".format(mbitem.unit, mbitem.addr))
-                            
+                        addr = myrange.start
+                        step = mbitems[0].mbtype.wordlen
+                        registers = rq.registers
+                        while addr < myrange.end:
+                            # Create sub list for decode
+                            subreg = []
+                            for i in range(step):
+                                subreg.append(registers.pop(0))
+                            # Find matching item
+                            matches = [x for x in mbitems if x.addr == addr]
+                            if len(matches) == 1:
+                                mbitem = matches[0]
+                                value = mbitem.mbtype.decode(subreg)
+                                for item in mbitem.items:
+                                    item(value, self.get_shortname(), "Modbus unit={}, addr={}".format(mbitem.unit, mbitem.addr))
+                            addr += step
 
         except Exception as err:
             self.logger.error(err)
@@ -93,8 +122,8 @@ class Modbus(SmartPlugin):
     def update_item(self, item, mbitem, caller=None, source=None, dest=None):
         # ignore values from bus
         if caller != self.get_shortname():
-            if mbitem.datatype == 'INT16LE':
-                self._write_modbus_int16le(int(item()), mbitem.unit, mbitem.addr)
+            if mbitem.fun == 0x10:
+                self._write_modbus_holding(mbitem.unit, mbitem.addr, mbitem.mbtype.encode(item()))
     
     def _read_parm(self, item, parmname, validator, converter):
         raw = self.get_iattr_value(item.conf, parmname)
@@ -126,7 +155,7 @@ class Modbus(SmartPlugin):
                                                    lambda x: int(x))
                 if modbus_type is None:
                     modbus_type = self._read_parm(itemSearch, 'modbus_type', 
-                                                  lambda x: x.upper() in self.type_dict, 
+                                                  lambda x: x.upper() in Modbus.types, 
                                                   lambda x: x)
                 if modbus_fun is None:
                     modbus_fun = self._read_parm(itemSearch, 'modbus_fun',
@@ -145,14 +174,15 @@ class Modbus(SmartPlugin):
             if modbus_unit in self.units:
                 funs = self.units[modbus_unit]
                 if modbus_fun in funs:
-                    addrs = funs[modbus_fun]
-                    if modbus_regaddr in addrs:
-                        mbitem = addrs[modbus_regaddr]
+                    (mbitems,ranges) = funs[modbus_fun]
+                    matches = [x for x in mbitems if x.addr == modbus_regaddr]
+                    if len(matches) == 1:
+                        mbitem = matches[0]
             if mbitem is not None:
-                        if mbitem.datatype != modbus_type:
+                        if mbitem.mbtype.name != modbus_type:
                             raise Exception('Only one data type allowed')
             else:
-                mbitem = MBItem(modbus_unit, modbus_regaddr, modbus_type, modbus_fun)
+                mbitem = MBItem(modbus_unit, modbus_regaddr, Modbus.types[modbus_type], modbus_fun)
                 # append to dictionary
                 if mbitem.unit in self.units:
                     funs = self.units[mbitem.unit]
@@ -160,11 +190,23 @@ class Modbus(SmartPlugin):
                     funs = {}
                     self.units[mbitem.unit] = funs
                 if mbitem.fun in funs:
-                    addrs = funs[mbitem.fun]
+                    (mbitems,ranges) = funs[mbitem.fun]
                 else:
-                    addrs = {}
-                    funs[mbitem.fun]=addrs
-                addrs[mbitem.addr] = mbitem
+                    mbitems = []
+                    ranges = []
+                    funs[mbitem.fun]=(mbitems,ranges)
+                mbitems.append(mbitem)
+                # Look to extend a range at end
+                matches = [x for x in ranges if x.end == mbitem.addr]
+                if len(matches) == 1:
+                    matches[0].end += mbitem.mbtype.wordlen
+                else:
+                    # Look to extend range at start
+                    matches = [x for x in ranges if x.start == mbitem.addr+mbitem.mbtype.wordlen]
+                    if len(matches) == 1:
+                        matches[0].start = mbitem.addr
+                    else:
+                        ranges.append(Range(mbitem.addr, mbitem.addr+mbitem.mbtype.wordlen))
             
             mbitem.items.append(item)
             return lambda item, caller, source, dest: self.update_item(item, mbitem, caller, source, dest)
@@ -172,36 +214,31 @@ class Modbus(SmartPlugin):
 
         return None
 
-    def _write_register_value(self, item, repeat_count=0):
-        try:
-            self.logger.debug('writing register value')
-            if not self.has_iattr(item.conf, 'systemair_regaddr'):
-                self.logger.error('Could not write to modbus. Register address missing!')
-                return
-        except Exception as err:
-            self.logger.error('Could not write register value to modbus. Error: {err}!'.format(err=err))
-            self.instrument = None
-
-    def _write_modbus_int16le(self, value, modbus_unit, modbus_regaddr):
-        self._write_modbus(modbus_unit, modbus_regaddr, value)
-        
-    def _write_modbus(self, unit, addr, values):
+    def _write_modbus_holding(self, unit, addr, values):
         self._lockmb.acquire()
         try:
             self.logger.debug('write to modbus')
             try:
                 client = self.connect()
-                client.write_registers(addr, values, unit=unit)
+                rp = client.write_registers(addr, values, unit=unit)
+                if rp.isError():
+                    raise Exception('Here')
             except Exception as err:
                 self.logger.error('Could not write register value to modbus. Error: {err}!'.format(err=err))
         finally:
             self._lockmb.release()
-            
+
+# Class holding information about a modbus item            
 class MBItem:
-    def __init__(self, unit, addr, datatype, fun):
+    def __init__(self, unit, addr, mbtype, fun):
         self.unit = unit
         self.addr = addr
         self.fun = fun
-        self.datatype = datatype
+        self.mbtype = mbtype
         self.items = []
 
+# Class holding information about modbus Unit
+class MBUnit:
+    def __init__(self, unit):
+        self.unit = unit
+        
