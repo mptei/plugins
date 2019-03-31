@@ -100,7 +100,7 @@ class Modbus(SmartPlugin):
                                 mbitem = matches[0]
                                 value = mbitem.mbtype.decode(subreg)
                                 for item in mbitem.items:
-                                    item(value, self.get_shortname(), "Modbus unit={}, addr={}".format(mbitem.unit, mbitem.addr))
+                                    item(value, self.get_shortname(), "Modbus:{}/{}".format(mbitem.unit, mbitem.addr))
                             addr += step
 
         except Exception as err:
@@ -179,8 +179,8 @@ class Modbus(SmartPlugin):
                     if len(matches) == 1:
                         mbitem = matches[0]
             if mbitem is not None:
-                        if mbitem.mbtype.name != modbus_type:
-                            raise Exception('Only one data type allowed')
+                if mbitem.mbtype.name != modbus_type:
+                    raise Exception('Only one data type allowed')
             else:
                 mbitem = MBItem(modbus_unit, modbus_regaddr, Modbus.types[modbus_type], modbus_fun)
                 # append to dictionary
@@ -209,9 +209,7 @@ class Modbus(SmartPlugin):
                         ranges.append(Range(mbitem.addr, mbitem.addr+mbitem.mbtype.wordlen))
             
             mbitem.items.append(item)
-            return lambda item, caller, source, dest: self.update_item(item, mbitem, caller, source, dest)
-            #return self.update_item2
-
+            return lambda item, caller=None, source=None, dest=None: self.update_item(item, mbitem, caller, source, dest)
         return None
 
     def _write_modbus_holding(self, unit, addr, values):
