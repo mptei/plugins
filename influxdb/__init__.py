@@ -150,7 +150,10 @@ class InfluxDB(SmartPlugin):
         # build name & tags
         kvs = [name]
         for tag_key in sorted(tags.keys()):
-            kvs.append("{k}={v}".format(k=tag_key, v=tags[tag_key]))
+            v=tags[tag_key]
+            if v is not None:
+                v=v.replace("=","\\=")
+                kvs.append("{k}={v}".format(k=tag_key, v=v))
         lineproto_name_tags = ','.join(kvs)
 
         # replace ":ga=" with ",ga=" to avoid "invalid tag format" error
