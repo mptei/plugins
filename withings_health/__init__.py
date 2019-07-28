@@ -25,7 +25,7 @@ import cherrypy
 import datetime
 from lib.model.smartplugin import *
 from lib.shtime import Shtime
-from nokia import NokiaAuth, NokiaApi, NokiaCredentials
+from nokia import NokiaAuth, NokiaApi, NokiaCredentials, NokiaMeasureGroup
 
 
 class WithingsHealth(SmartPlugin):
@@ -42,6 +42,7 @@ class WithingsHealth(SmartPlugin):
         self._cycle = self.get_parameter_value('cycle')
         self._creds = None
         self._client = None
+        self._lastFetch = None
         self._items = {}
 
         if not self.init_webinterface():
@@ -143,119 +144,55 @@ class WithingsHealth(SmartPlugin):
                     "Plugin '{}': Items for OAuth2 Data are not set with required values. Please run process via WebGUI of the plugin.".format(
                         self.get_fullname()))
                 return
-        measures = self._client.get_measures()
-        last_measure = measures[0]
-
-        if last_measure.get_measure(11) is not None and 'heart_pulse' in self._items:
-            self._items['heart_pulse'](last_measure.get_measure(11))
-            self.logger.debug("Plugin '{}': heart_pulse - {}".format(self.get_fullname(), last_measure.get_measure(11)))
-
-        # Bugfix for strange behavior of returning heart_pulse as seperate dataset..
-        if last_measure.get_measure(1) is None:
-            last_measure = measures[1]
-
-        if last_measure.get_measure(1) is not None and 'weight' in self._items:
-            self._items['weight'](last_measure.get_measure(1))
-            self.logger.debug("Plugin '{}': weight - {}".format(self.get_fullname(), last_measure.get_measure(1)))
-
-        if last_measure.get_measure(4) is not None and 'height' in self._items:
-            self._items['height'](last_measure.get_measure(4))
-            self.logger.debug("Plugin '{}': height - {}".format(self.get_fullname(), last_measure.get_measure(4)))
-
-        if last_measure.get_measure(5) is not None and 'fat_free_mass' in self._items:
-            self._items['fat_free_mass'](last_measure.get_measure(5))
-            self.logger.debug(
-                "Plugin '{}': fat_free_mass - {}".format(self.get_fullname(), last_measure.get_measure(5)))
-
-        if last_measure.get_measure(6) is not None and 'fat_ratio' in self._items:
-            self._items['fat_ratio'](last_measure.get_measure(6))
-            self.logger.debug("Plugin '{}': fat_ratio - {}".format(self.get_fullname(), last_measure.get_measure(6)))
-
-        if last_measure.get_measure(8) is not None and 'fat_mass_weight' in self._items:
-            self._items['fat_mass_weight'](last_measure.get_measure(8))
-            self.logger.debug(
-                "Plugin '{}': fat_mass_weight - {}".format(self.get_fullname(), last_measure.get_measure(8)))
-
-        if last_measure.get_measure(9) is not None and 'diastolic_blood_pressure' in self._items:
-            self._items['diastolic_blood_pressure'](last_measure.get_measure(9))
-            self.logger.debug(
-                "Plugin '{}': diastolic_blood_pressure - {}".format(self.get_fullname(), last_measure.get_measure(9)))
-
-        if last_measure.get_measure(10) is not None and 'systolic_blood_pressure' in self._items:
-            self._items['systolic_blood_pressure'](last_measure.get_measure(10))
-            self.logger.debug(
-                "Plugin '{}': systolic_blood_pressure - {}".format(self.get_fullname(), last_measure.get_measure(10)))
-
-        if last_measure.get_measure(11) is not None and 'heart_pulse' in self._items:
-            self._items['heart_pulse'](last_measure.get_measure(11))
-            self.logger.debug("Plugin '{}': heart_pulse - {}".format(self.get_fullname(), last_measure.get_measure(11)))
-
-        if last_measure.get_measure(12) is not None and 'temperature' in self._items:
-            self._items['temperature'](last_measure.get_measure(12))
-            self.logger.debug("Plugin '{}': temperature - {}".format(self.get_fullname(), last_measure.get_measure(12)))
-
-        if last_measure.get_measure(54) is not None and 'spo2' in self._items:
-            self._items['spo2'](last_measure.get_measure(54))
-            self.logger.debug("Plugin '{}': spo2 - {}".format(self.get_fullname(), last_measure.get_measure(54)))
-
-        if last_measure.get_measure(71) is not None and 'body_temperature' in self._items:
-            self._items['body_temperature'](last_measure.get_measure(71))
-            self.logger.debug(
-                "Plugin '{}': body_temperature - {}".format(self.get_fullname(), last_measure.get_measure(71)))
-
-        if last_measure.get_measure(72) is not None and 'skin_temperature' in self._items:
-            self._items['skin_temperature'](last_measure.get_measure(72))
-            self.logger.debug(
-                "Plugin '{}': skin_temperature - {}".format(self.get_fullname(), last_measure.get_measure(72)))
-
-        if last_measure.get_measure(76) is not None and 'muscle_mass' in self._items:
-            self._items['muscle_mass'](last_measure.get_measure(76))
-            self.logger.debug("Plugin '{}': muscle_mass - {}".format(self.get_fullname(), last_measure.get_measure(76)))
-
-        if last_measure.get_measure(77) is not None and 'hydration' in self._items:
-            self._items['hydration'](last_measure.get_measure(77))
-            self.logger.debug("Plugin '{}': hydration - {}".format(self.get_fullname(), last_measure.get_measure(77)))
-
-        if last_measure.get_measure(88) is not None and 'bone_mass' in self._items:
-            self._items['bone_mass'](last_measure.get_measure(88))
-            self.logger.debug("Plugin '{}': bone_mass - {}".format(self.get_fullname(), last_measure.get_measure(88)))
-
-        if last_measure.get_measure(91) is not None and 'pulse_wave_velocity' in self._items:
-            self._items['pulse_wave_velocity'](last_measure.get_measure(91))
-            self.logger.debug(
-                "Plugin '{}': pulse_wave_velocity - {}".format(self.get_fullname(), last_measure.get_measure(91)))
-
-        if 'height' in self._items and ('bmi' in self._items or 'bmi_text' in self._items) and last_measure.get_measure(
-                1) is not None:
-            if self._items['height']() > 0:
-                bmi = round(
-                    last_measure.get_measure(1) / ((self._items['height']()) * (self._items['height']())), 2)
-                if 'bmi' in self._items:
-                    self._items['bmi'](bmi)
-                if 'bmi_text' in self._items:
-                    if bmi < 16:
-                        self._items['bmi_text']('starkes Untergewicht')
-                    elif 16 <= bmi < 17:
-                        self._items['bmi_text']('mäßiges Untergewicht ')
-                    elif 17 <= bmi < 18.5:
-                        self._items['bmi_text']('leichtes Untergewicht ')
-                    elif 18.5 <= bmi < 25:
-                        self._items['bmi_text']('Normalgewicht')
-                    elif 25 <= bmi < 30:
-                        self._items['bmi_text']('Präadipositas (Übergewicht)')
-                    elif 30 <= bmi < 35:
-                        self._items['bmi_text']('Adipositas Grad I')
-                    elif 35 <= bmi < 40:
-                        self._items['bmi_text']('Adipositas Grad II')
-                    elif 40 <= bmi:
-                        self._items['bmi_text']('Adipositas Grad III')
-            else:
-                self.logger.error(
-                    "Plugin '{}': Cannot calculate BMI: height is 0, please set height (in m) for height item manually.".format(
-                        self.get_fullname()))
+        args = {}
+        if self._lastFetch is not None:
+            args['lastUpdate'] = self._lastFetch
         else:
-            self.logger.error(
-                "Plugin '{}': Cannot calculate BMI: height and / or bmi item missing.".format(self.get_fullname()))
+            self._lastFetch = datetime.datetime.utcnow()
+
+        measures = self._client.get_measures()
+        self.logger.debug("Plugin '{}': got {} measures".format(self.get_fullname(), len(measures)))
+
+        # Loop over measures
+        for last_measure in measures:
+
+            self.logger.debug("Plugin '{}': last_measure data - {}".format(self.get_fullname(), getattr(last_measure, 'data')))
+
+            for n, t in NokiaMeasureGroup.MEASURE_TYPES:
+                val = last_measure.get_measure(t)
+                if val is not None and n in self._items:
+                    self._items[n](val)
+                    self.logger.debug("Plugin '{}': {} - {}".format(self.get_fullname(), n, val))
+
+            if 'height' in self._items and ('bmi' in self._items or 'bmi_text' in self._items) and last_measure.weight is not None:
+                if self._items['height']() > 0:
+                    bmi = round(
+                        last_measure.get_measure(1) / ((self._items['height']()) * (self._items['height']())), 2)
+                    if 'bmi' in self._items:
+                        self._items['bmi'](bmi)
+                    if 'bmi_text' in self._items:
+                        if bmi < 16:
+                            self._items['bmi_text']('starkes Untergewicht')
+                        elif 16 <= bmi < 17:
+                            self._items['bmi_text']('mäßiges Untergewicht ')
+                        elif 17 <= bmi < 18.5:
+                            self._items['bmi_text']('leichtes Untergewicht ')
+                        elif 18.5 <= bmi < 25:
+                            self._items['bmi_text']('Normalgewicht')
+                        elif 25 <= bmi < 30:
+                            self._items['bmi_text']('Präadipositas (Übergewicht)')
+                        elif 30 <= bmi < 35:
+                            self._items['bmi_text']('Adipositas Grad I')
+                        elif 35 <= bmi < 40:
+                            self._items['bmi_text']('Adipositas Grad II')
+                        elif 40 <= bmi:
+                            self._items['bmi_text']('Adipositas Grad III')
+                else:
+                    self.logger.error(
+                        "Plugin '{}': Cannot calculate BMI: height is 0, please set height (in m) for height item manually.".format(
+                            self.get_fullname()))
+            if last_measure.weight is not None:
+                break
 
     def parse_item(self, item):
         """
@@ -352,6 +289,7 @@ class WebInterface(SmartPluginWebIf):
                 callback_url = "http://{}:{}{}".format(ip, port, web_if['Mount'])
                 self.logger.debug("Plugin '{}': WebIf found, callback is {}".format(self.plugin.get_fullname(),
                                                                                     callback_url))
+            return "https://home.pieper-family.de{}".format(web_if["Mount"])
             return callback_url
         self.logger.error("Plugin '{}': Callback URL cannot be established.".format(self.plugin.get_fullname()))
 
