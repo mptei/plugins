@@ -446,8 +446,15 @@ class HUE(SmartPlugin):
                     else:
                         self.logger.warning('update_lampgroup_item: on or more of the col... items around item {0} is not defined'.format(item.id()))
                 else:
-                    # standardbefehle
-                    stateSetter(hueBridgeId, hueId, {hueSend: value, 'transitiontime': hueTransitionTime})
+                    # Switch lamp off via bri == 0
+                    if hueSend == 'bri' and value == 0:
+                        # Switch item of via bri 0
+                        stateSetter(hueBridgeId, hueId, {'on': False, 'transitiontime': hueTransitionTime})
+                        if hueOnItem is not None:
+                            hueOnItem(False,'HUE','off via bri == 0')
+                    else:
+                        # standardbefehle
+                        stateSetter(hueBridgeId, hueId, {hueSend: value, 'transitiontime': hueTransitionTime})
         else:
             # lampe ist im status bei sh aus. in diesem zustand sollten keine befehle gesendet werden
             if hueSend == 'on':
