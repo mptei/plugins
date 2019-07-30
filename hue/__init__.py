@@ -414,18 +414,25 @@ class HUE(SmartPlugin):
                 # wenn der status in sh true ist, aber mit dem befehl on, dann muss die lampe auf der hue seite erst eingeschaltet werden
                 options = {'on': True , 'transitiontime': hueTransitionTime}
                 briItem = sendItems.get(hueIndex+'.bri')
-                if briItem is not None:
-                    # wenn eingeschaltet wird und ein bri item vorhanden ist, dann wird auch die hellgkeit
-                    # mit gesetzt, weil die gruppe das im ausgeschalteten zustand vergisst.
-                    bri = int(briItem())
-                    if bri == 0:
-                        # Set brightness at least to 1
-                        bri = 1
-                        briItem(1,'HUE','set at least to 1 on switch on')
-                    options.update({'bri': bri})
+                if True:
+                    # Switch on with full brightness
+                    options.update({'bri': 255})
+                    if briItem is not None:
+                        briItem(255,'HUE','witched on')
                 else:
-                    # ansonst wird nur eingeschaltet
-                    self.logger.info('update_lampgroup_item: no bri item defined for item {0} restoring the brightness after swiching on again'.format(item.id()))
+                    # Restore brightness (if available)
+                    if briItem is not None:
+                        # wenn eingeschaltet wird und ein bri item vorhanden ist, dann wird auch die hellgkeit
+                        # mit gesetzt, weil die gruppe das im ausgeschalteten zustand vergisst.
+                        bri = int(briItem())
+                        if bri == 0:
+                            # Set brightness at least to 1
+                            bri = 1
+                            briItem(1,'HUE','set at least to 1 on switch on')
+                        options.update({'bri': bri})
+                    else:
+                        # ansonst wird nur eingeschaltet
+                        self.logger.info('update_lampgroup_item: no bri item defined for item {0} restoring the brightness after swiching on again'.format(item.id()))
                 stateSetter(hueBridgeId, hueId, options)
             else:
                 # anderer befehl gegeben
