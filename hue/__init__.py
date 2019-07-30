@@ -356,6 +356,7 @@ class HUE(SmartPlugin):
         # lokale speicherung in variablen, damit funktionen nicht immer aufgerufen werden (performance)
         value = item()
         hueBridgeId = item.conf['hue_bridge_id']
+
         if isGroup:
             hueId = item.conf['hue_group_id']
             hueSend = item.conf['hue_send_group']
@@ -364,6 +365,7 @@ class HUE(SmartPlugin):
             hueId = item.conf['hue_lamp_id']
             hueSend = item.conf['hue_send']
             hueLampType = item.conf.get('hue_lamp_type')
+
         hueTransitionTime = item.conf.get('hue_transitionTime')
         if hueTransitionTime is not None:
             hueTransitionTime = int(float(hueTransitionTime) * 10)
@@ -373,13 +375,17 @@ class HUE(SmartPlugin):
         # index ist immer bridge_id + id + hue_send
         hueIndex = hueBridgeId + '.' + hueId
 
-        hueIsOn = sendItems.get(hueIndex+'.on')
-        if hueIsOn is not None:
-            hueIsOn = hueIsOn()
+        if hueSend == 'on':
+            hueOnItem = item
+            shStateIsOn = value
         else:
-            self.logger.warning('update_group_item: no item for on/off defined for bridge {0} group {1}'.format(hueBridgeId, hueId))
-            hueIsOn = False
-        self.logger.debug('hueIsOn: {0}'.format(hueIsOn))
+            hueOnItem = sendItems.get(hueIndex+'.on')
+            if hueOnItem is not None:
+                shStateIsOn = hueOnItem()
+            else:
+                self.logger.warning('update_lampgroup_item: no item for on/off defined for item {0}'.format(item.id()))
+                shStateIsOn = False
+        self.logger.debug('shStateIsOn: {0}'.format(shStateIsOn))
             
         # test aus die wertgrenzen, die die bridge verstehen kann
         if hueSend == 'ct':
@@ -398,7 +404,7 @@ class HUE(SmartPlugin):
             # hue darf zwischen -65534 und 65534 liegen
             value = self._limit_range_int(value, -65534, 65534)    
             
-        if hueIsOn:
+        if shStateIsOn:
             # lampe ist an (status in sh). dann können alle befehle gesendet werden
             if hueSend == 'on':
                 # wenn der status in sh true ist, aber mit dem befehl on, dann muss die lampe auf der hue seite erst eingeschaltet werden
@@ -407,10 +413,15 @@ class HUE(SmartPlugin):
                 if briItem is not None:
                     # wenn eingeschaltet wird und ein bri item vorhanden ist, dann wird auch die hellgkeit
                     # mit gesetzt, weil die gruppe das im ausgeschalteten zustand vergisst.
-                    options.update({'bri': int(briItem())})
+                    bri = int(briItem())
+                    if bri == 0:
+                        # Set brightness at least to 1
+                        bri = 1
+                        briItem(1,'HUE','set at least to 1 on switch on')
+                    options.update({'bri': bri})
                 else:
                     # ansonst wird nur eingeschaltet
-                    self.logger.info('update_lamp_item: no bri item defined for item {0} restoring the brightness after swiching on again'.format(item.id()))
+                    self.logger.info('update_lampgroup_item: no bri item defined for item {0} restoring the brightness after swiching on again'.format(item.id()))
                 stateSetter(hueBridgeId, hueId, options)
             else:
                 # anderer befehl gegeben
@@ -429,7 +440,7 @@ class HUE(SmartPlugin):
                         # und jetzt der wert setzen
                         stateSetter(hueBridgeId, hueId, {'xy': xyPoint, 'transitiontime': hueTransitionTime})
                     else:
-                        self.logger.warning('update_lamp_item: on or more of the col... items around item {0} is not defined'.format(item.id()))
+                        self.logger.warning('update_lampgroup_item: on or more of the col... items around item {0} is not defined'.format(item.id()))
                 else:
                     # standardbefehle
                     stateSetter(hueBridgeId, hueId, {hueSend: value, 'transitiontime': hueTransitionTime})
@@ -441,9 +452,12 @@ class HUE(SmartPlugin):
                 stateSetter(hueBridgeId, hueId, {'on': False , 'transitiontime': hueTransitionTime})
             else:
                 # die lampe kann auch über das senden bri angemacht werden
-                if hueSend == 'bri':
+                if hueSend == 'bri' and value != 0:
                     # jetzt wird die gruppe eingeschaltet und der wert von bri auf den letzten wert gesetzt
                     stateSetter(hueBridgeId, hueId, {'on': True , 'bri': value, 'transitiontime': hueTransitionTime})
+                    if hueOnItem is not None:
+                        # switch bool item on
+                        hueOnItem(True,'HUE','on via bri != 0')
                 else:
                     # ansonsten wird kein befehl abgesetzt !
                     pass                           
