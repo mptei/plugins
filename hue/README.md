@@ -210,6 +210,11 @@ plugin automatically sets the lamp on and starts dimming with the last value.
 ### hue_dim_max
 Parameter which determines the maximum of the dimmer range. Without this parameter DPT3 dimming will not work.
 
+### hue_dim_min
+Parameter which determines the minimum of the dimmer range. Good for dimming the color temperature. If not specified a warning is written
+and a default of 1 is set. This is good for the most common case where the brightness shall be controlled and it is not desired to dimm 
+the lamp to the off state.
+
 ### hue_dim_step
 Parameter which determines the step size.
 In addition to hue_dim_max this parameter has to be set. If not a warning will be written and a default value of 25 will be set.
