@@ -247,12 +247,12 @@ class HUE(SmartPlugin):
         # routinen keinen sonderfall mehr abzudecken !
         # zunächst einmal die installation der dimmroutine
         if 'hue_dim_max' in item.conf:
-            if not 'hue_dim_step' in item.conf:
-                item.conf['hue_dim_step'] = '25'
-                self.logger.warning('dimmenDPT3: no hue_dim_step defined in item [{0}] using default 25'.format(item))
-            if not 'hue_dim_time' in item.conf:
-                item.conf['hue_dim_time'] = '1'
-                self.logger.warning('dimmenDPT3: no hue_dim_time defined in item [{0}] using default 1'.format(item))
+            # DPT3 dimming requested
+            # Set defaults if not already set
+            for key,val in [('hue_dim_step', '25'), ('hue_dim_time', '1'), ('hue_dim_min', '1'), ('hue_transitionTime',self._hueDefaultTransitionTime)]:
+                if key not in item.conf:
+                    self.logger.warning('dimmenDPT3: no {} defined in item [{}] using default {}'.format(key,item.id(),val))
+                    item.conf[key] = val
             return self.dimmenDPT3
 
         if 'hue_listen' in item.conf:
@@ -487,28 +487,29 @@ class HUE(SmartPlugin):
     def dimmenDPT3(self, item, caller=None, source=None, dest=None):
         # das ist die methode, die die DPT3 dimmnachrichten auf die dimmbaren hue items mapped
         # fallunterscheidung dimmen oder stop
+        self.logger.debug('dimm DPT3 item {0}, caller {1}, source {2} => {3}'.format(item.id(),caller,source,item()))
         if caller != 'HUE':
             # auswertung der list werte für die KNX daten
             # [1] steht für das dimmen
             # [0] für die richtung
-            # es wird die fading funtion verwendet
-            valueMax = float(item.conf['hue_dim_max'])
-            valueDimStep = float(item.conf['hue_dim_step'])
-            valueDimTime = float(item.conf['hue_dim_time'])
+            # es wird die fading function verwendet
+            parent = item.return_parent()
             if item()[1] == 1:
                 # dimmen
                 if item()[0] == 1:
-                    # hoch
-                    item.return_parent().fade(valueMax, valueDimStep, valueDimTime)
+                    targetVal = float(item.conf['hue_dim_max'])
                 else:
-                    # runter
-                    item.return_parent().fade(0, valueDimStep, valueDimTime)
+                    targetVal = float(item.conf['hue_dim_min'])
+                valueDimStep = float(item.conf['hue_dim_step'])
+                valueDimTime = float(item.conf['hue_dim_time'])
+                if not parent._fading:
+                    self.logger.debug('Dimm item {0} to {1} with step {2} and step time {3}'.format(parent.id(), targetVal, valueDimStep, valueDimTime))
+                    parent.fade(targetVal, valueDimStep, valueDimTime)
             else:
-                # stop, indem man einen wert setzt. da es nicht der gleiche wert sein darf, erst einmal +1, dann -1
-                # das ist aus meiner sicht noch ein fehler in item.py
-                item.return_parent()(int(item.return_parent()() + 1), 'HUE_FADE')
-                item.return_parent()(int(item.return_parent()() - 1), 'HUE_FADE')
-
+                # stop, dimming
+                parent._fading = False
+                self.logger.debug('Stopped dimming item {0}'.format(parent.id()))
+                
     def  _get_web_content(self, hueBridgeId='0', path='', method='GET', body=None):
         # in dieser routine erfolgt der umbau und die speziellen themen zur auswertung der verbindung, die speziell für das plugin ist
         # der rest sollte standard in der routine fetch_url() enthalten sein. leider fehlt dort aber die auswertung der fehllerconditions
