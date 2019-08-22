@@ -253,7 +253,18 @@ class HUE(SmartPlugin):
                 if key not in item.conf:
                     self.logger.warning('dimmenDPT3: no {} defined in item [{}] using default {}'.format(key,item.id(),val))
                     item.conf[key] = val
-            return self.dimmenDPT3
+            if False:
+                # Check if parent is bri item
+                parent = item.return_parent()
+                hueSend = parent.conf.get('hue_send')
+                if hueSend is not None:
+                    hueSend = parent.conf.get('hue_send_group')
+                if hueSend is None or hueSend == 'bri':
+                    self.logger.error('dimmenDPT3: need hue bri item as parent')
+                    return None
+                return self.dimmenDPT3KNX
+            else:
+                return self.dimmenDPT3
 
         if 'hue_listen' in item.conf:
             hueListenCommand = item.conf['hue_listen']
@@ -409,12 +420,18 @@ class HUE(SmartPlugin):
             if hueSend == 'on':
                 # wenn der status in sh true ist, aber mit dem befehl on, dann muss die lampe auf der hue seite erst eingeschaltet werden
                 options = {'on': True , 'transitiontime': hueTransitionTime}
+
+                ctItem = sendItems.get(hueIndex+'.ct')
+                if ctItem is not None:
+                    ct = int(ctItem())
+                    options.update({'ct': ct})
+
                 briItem = sendItems.get(hueIndex+'.bri')
                 if True:
                     # Switch on with full brightness
                     options.update({'bri': 255})
                     if briItem is not None:
-                        briItem(255,'HUE','witched on')
+                        briItem(255,'HUE','switched on')
                 else:
                     # Restore brightness (if available)
                     if briItem is not None:
@@ -452,7 +469,7 @@ class HUE(SmartPlugin):
                     # Switch lamp off via bri == 0
                     if hueSend == 'bri' and value == 0:
                         # Switch item of via bri 0
-                        stateSetter(hueBridgeId, hueId, {'on': False, 'transitiontime': hueTransitionTime})
+                        stateSetter(hueBridgeId, hueId, {'on': False, 'transitiontime': hueTransitionTime, 'bri': 0})
                         if hueOnItem is not None:
                             hueOnItem(False,'HUE','off via bri == 0')
                     else:
@@ -463,7 +480,7 @@ class HUE(SmartPlugin):
             if hueSend == 'on':
                 # sonderfall, wenn der status die transition erst ausgeöst hat, dann muss die gruppe
                 # auf der hue seite erst ausgeschaltet werden
-                stateSetter(hueBridgeId, hueId, {'on': False , 'transitiontime': hueTransitionTime})
+                stateSetter(hueBridgeId, hueId, {'on': False , 'transitiontime': hueTransitionTime, 'bri': 0})
             else:
                 # die lampe kann auch über das senden bri angemacht werden
                 if hueSend == 'bri' and value != 0:
@@ -537,6 +554,63 @@ class HUE(SmartPlugin):
                 # stop, dimming
                 parent._fading = False
                 self.logger.debug('Stopped dimming item {0}'.format(parent.id()))
+
+    # Dimming KNX compatibel. Means dimming up starts on min.
+    # It is assured that the item has a HUE bri parent. Also it exists
+    # a switch item
+    def dimmenDPT3KNX(self, item, caller=None, source=None, dest=None):
+        # das ist die methode, die die DPT3 dimmnachrichten auf die dimmbaren hue items mapped
+        # fallunterscheidung dimmen oder stop
+        self.logger.debug('dimm DPT3 item {0}, caller {1}, source {2} => {3}'.format(item.id(),caller,source,item()))
+        if caller != 'HUE':
+            # auswertung der list werte für die KNX daten
+            # [1] steht für das dimmen
+            # [0] für die richtung
+            # es wird die fading function verwendet
+            hueBriItem = item.return_parent()
+            hueBridgeId = parent.conf['hue_bridge_id']
+            hueIndex = hueBridgeId+'.'
+            hueId = parent.conf.get('hue_send')
+            if hueId is not None:
+                # lamp item
+                hueItems = self._sendLampItems
+                stateSetter = self._set_lamp_state
+            else:
+                # group item
+                hueId = parent.conf['hue_send_group']
+                hueItems = self._sendGroupItems
+                stateSetter = self._set_group_state
+            hueIndex += hueId
+            hueOnItem = hueItems[hueIndex+'.on']
+
+            if item()[1] == 1:
+                # dimmen
+                hueTransitionTime = item.conf.get('hue_transitionTime')
+                if hueTransitionTime is not None:
+                    hueTransitionTime = int(float(hueTransitionTime) * 10)
+                else:
+                    hueTransitionTime = int(self._hueDefaultTransitionTime * 10)
+                valueMin = float(item.conf['hue_dim_min'])
+                if not hueOnItem() and item()[0] == 1:
+                    # Switch lamp on with lowest brightness
+                    stateSetter(hueBridgeId, hueId, {'on': True , 'bri': valueMin, 'transitiontime': hueTransitionTime})
+                    hueBriItem(valueMin,'HUE','DPT3 start on min')
+                    hueOnItem(True,'HUE','DPT3 start on min')
+                if item()[0] == 1:
+                    # up
+                    targetVal = float(item.conf['hue_dim_max'])
+                else:
+                    # down
+                    targetVal = valueMin
+                valueDimStep = float(item.conf['hue_dim_step'])
+                valueDimTime = float(item.conf['hue_dim_time'])
+                if not hueBriItem._fading:
+                    self.logger.debug('Dimm item {0} to {1} with step {2} and step time {3}'.format(hueBriItem.id(), targetVal, valueDimStep, valueDimTime))
+                    hueBriItem.fade(targetVal, valueDimStep, valueDimTime)
+            else:
+                # stop, dimming
+                hueBriItem._fading = False
+                self.logger.debug('Stopped dimming item {0}'.format(hueBriItem.id()))
                 
     def  _get_web_content(self, hueBridgeId='0', path='', method='GET', body=None):
         # in dieser routine erfolgt der umbau und die speziellen themen zur auswertung der verbindung, die speziell für das plugin ist
