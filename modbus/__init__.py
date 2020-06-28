@@ -69,44 +69,42 @@ class Modbus(SmartPlugin):
 
     # Called regularly to update modbus values
     def _read_modbus(self):
-        self._lockmb.acquire()
-        try:
-            for unit in self.units:
-                funs = self.units[unit]
-                for fun in funs:
-                    client = self.connect()
-                    (mbitems,ranges) = funs[fun]
-                    for myrange in ranges:
-                        regcnt = myrange.end - myrange.start
-                        rq = None
-                        if fun == 4:
-                            rq = client.read_input_registers(myrange.start, regcnt, unit=unit)
-                        elif fun == 16:
-                            rq = client.read_holding_registers(myrange.start, regcnt, unit=unit)
-                        if rq.isError():
-                            self.logger.error('Failed to read input registers')
-                            break
-                        addr = myrange.start
-                        step = mbitems[0].mbtype.wordlen
-                        registers = rq.registers
-                        while addr < myrange.end:
-                            # Create sub list for decode
-                            subreg = []
-                            for i in range(step):
-                                subreg.append(registers.pop(0))
-                            # Find matching item
-                            matches = [x for x in mbitems if x.addr == addr]
-                            if len(matches) == 1:
-                                mbitem = matches[0]
-                                value = mbitem.mbtype.decode(subreg)
-                                for item in mbitem.items:
-                                    item(value, self.get_shortname(), "Modbus:{}/{}".format(mbitem.unit, mbitem.addr))
-                            addr += step
+        with self._lockmb:
+            try:
+                for unit in self.units:
+                    funs = self.units[unit]
+                    for fun in funs:
+                        client = self.connect()
+                        (mbitems,ranges) = funs[fun]
+                        for myrange in ranges:
+                            regcnt = myrange.end - myrange.start
+                            rq = None
+                            if fun == 4:
+                                rq = client.read_input_registers(myrange.start, regcnt, unit=unit)
+                            elif fun == 16:
+                                rq = client.read_holding_registers(myrange.start, regcnt, unit=unit)
+                            if rq.isError():
+                                self.logger.error('Failed to read input registers: {0}:{1}-{2}: {3}'.format(unit,myrange.start,myrange.end,rq))
+                                break
+                            addr = myrange.start
+                            step = mbitems[0].mbtype.wordlen
+                            registers = rq.registers
+                            while addr < myrange.end:
+                                # Create sub list for decode
+                                subreg = []
+                                for i in range(step):
+                                    subreg.append(registers.pop(0))
+                                # Find matching item
+                                matches = [x for x in mbitems if x.addr == addr]
+                                if len(matches) == 1:
+                                    mbitem = matches[0]
+                                    value = mbitem.mbtype.decode(subreg)
+                                    for item in mbitem.items:
+                                        item(value, self.get_shortname(), "Modbus:{}/{}".format(mbitem.unit, mbitem.addr))
+                                addr += step
 
-        except Exception as err:
-            self.logger.error(err)
-        finally:
-            self._lockmb.release()
+            except Exception as err:
+                self.logger.error(err)
 
     def run(self):
         self.logger.debug("Plugin '{}': run method called".format(self.get_fullname()))
@@ -147,8 +145,9 @@ class Modbus(SmartPlugin):
             modbus_unit = None
             modbus_type =None
             modbus_fun = None
+            modbus_wo = None
             itemSearch = item
-            while ((modbus_unit is None or modbus_type is None or modbus_fun is None) and hasattr(itemSearch, 'conf')):
+            while ((modbus_unit is None or modbus_type is None or modbus_fun is None or modbus_wo is None) and hasattr(itemSearch, 'conf')):
                 if modbus_unit is None:
                     modbus_unit = self._read_parm(itemSearch, 'modbus_unit',
                                                    lambda x: True,
@@ -161,12 +160,18 @@ class Modbus(SmartPlugin):
                     modbus_fun = self._read_parm(itemSearch, 'modbus_fun',
                                                    lambda x: x.upper() in self.fun_dict,
                                                    lambda x: self.fun_dict[x.upper()])
+                if modbus_wo is None:
+                    modbus_wo = self._read_parm(itemSearch, 'modbus_wo',
+                                                   lambda x: True,
+                                                   lambda x: bool(x))
                 itemSearch = itemSearch.return_parent()
             self._check_parm(item, 'modbus_unit', modbus_unit)
             if modbus_type is None:
                 modbus_type = 'INT16LE'
             if modbus_fun is None:
                 modbus_fun = 4
+            if modbus_wo is None:
+                modbus_wo = False
             self.logger.debug("modbus: {0} connected to register {1:#04x} on unit {2}".format(item, modbus_regaddr, modbus_unit))
             
             # Check if this address is already used
@@ -183,48 +188,46 @@ class Modbus(SmartPlugin):
                     raise Exception('Only one data type allowed')
             else:
                 mbitem = MBItem(modbus_unit, modbus_regaddr, Modbus.types[modbus_type], modbus_fun)
-                # append to dictionary
-                if mbitem.unit in self.units:
-                    funs = self.units[mbitem.unit]
-                else:
-                    funs = {}
-                    self.units[mbitem.unit] = funs
-                if mbitem.fun in funs:
-                    (mbitems,ranges) = funs[mbitem.fun]
-                else:
-                    mbitems = []
-                    ranges = []
-                    funs[mbitem.fun]=(mbitems,ranges)
-                mbitems.append(mbitem)
-                # Look to extend a range at end
-                matches = [x for x in ranges if x.end == mbitem.addr]
-                if len(matches) == 1:
-                    matches[0].end += mbitem.mbtype.wordlen
-                else:
-                    # Look to extend range at start
-                    matches = [x for x in ranges if x.start == mbitem.addr+mbitem.mbtype.wordlen]
-                    if len(matches) == 1:
-                        matches[0].start = mbitem.addr
+                if not modbus_wo:
+                    # append to dictionary
+                    if mbitem.unit in self.units:
+                        funs = self.units[mbitem.unit]
                     else:
-                        ranges.append(Range(mbitem.addr, mbitem.addr+mbitem.mbtype.wordlen))
-            
+                        funs = {}
+                        self.units[mbitem.unit] = funs
+                    if mbitem.fun in funs:
+                        (mbitems,ranges) = funs[mbitem.fun]
+                    else:
+                        mbitems = []
+                        ranges = []
+                        funs[mbitem.fun]=(mbitems,ranges)
+                    mbitems.append(mbitem)
+                    # Look to extend a range at end
+                    matches = [x for x in ranges if x.end == mbitem.addr]
+                    if len(matches) == 1:
+                        matches[0].end += mbitem.mbtype.wordlen
+                    else:
+                        # Look to extend range at start
+                        matches = [x for x in ranges if x.start == mbitem.addr+mbitem.mbtype.wordlen]
+                        if len(matches) == 1:
+                            matches[0].start = mbitem.addr
+                        else:
+                            ranges.append(Range(mbitem.addr, mbitem.addr+mbitem.mbtype.wordlen))
+
             mbitem.items.append(item)
             return lambda item, caller=None, source=None, dest=None: self.update_item(item, mbitem, caller, source, dest)
         return None
 
     def _write_modbus_holding(self, unit, addr, values):
-        self._lockmb.acquire()
-        try:
+        with self._lockmb:
             self.logger.debug('write to modbus')
             try:
                 client = self.connect()
                 rp = client.write_registers(addr, values, unit=unit)
                 if rp.isError():
-                    raise Exception('Here')
+                    self.logger.error('Could not write register value to modbus. Error: {}!'.format(rp))
             except Exception as err:
-                self.logger.error('Could not write register value to modbus. Error: {err}!'.format(err=err))
-        finally:
-            self._lockmb.release()
+                self.logger.error('Could not write register value to modbus. Exception: {err}!'.format(err=err))
 
 # Class holding information about a modbus item            
 class MBItem:
