@@ -84,7 +84,7 @@ class Modbus(SmartPlugin):
                         elif fun == 16:
                             rq = client.read_holding_registers(myrange.start, regcnt, unit=unit)
                         if rq.isError():
-                            self.logger.error('Failed to read input registers')
+                            self.logger.error('Failed to read input registers: {0}:{1}-{2}: {3}'.format(unit,myrange.start,myrange.end,rq))
                             break
                         addr = myrange.start
                         step = mbitems[0].mbtype.wordlen
