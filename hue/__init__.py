@@ -552,7 +552,7 @@ class HUE(SmartPlugin):
         # in dieser routine erfolgt der umbau und die speziellen themen zur auswertung der verbindung, die speziell für das plugin ist
         # der rest sollte standard in der routine fetch_url() enthalten sein. leider fehlt dort aber die auswertung der fehllerconditions
         # erst einmal die komplette url
-        url = 'http://' + self._hue_ip[int(hueBridgeId)] + '/api/' + self._hue_user[int(hueBridgeId)] + path
+        url = 'http://' + self._hue_ip[int(hueBridgeId)] + ':' + self._hue_port[int(hueBridgeId)] + '/api/' + self._hue_user[int(hueBridgeId)] + path
         # setzen des fehlerstatus items
         if hueBridgeId + '.' + 'errorstatus' in self._listenBridgeItems:
             errorItem = self._listenBridgeItems[hueBridgeId + '.' + 'errorstatus']
@@ -777,7 +777,7 @@ class HUE(SmartPlugin):
     def authorizeuser(self, hueBridgeId='0'):
         data = json.dumps(
             {"devicetype": "smarthome#" + self._hue_user[int(hueBridgeId)]})
-        con = http.client.HTTPConnection(self._hue_ip[int(hueBridgeId)])
+        con = http.client.HTTPConnection(self._hue_ip[int(hueBridgeId)], self._hue_port[int(hueBridgeId)])
         con.request("POST", "/api", data)
         resp = con.getresponse()
         con.close()
