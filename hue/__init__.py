@@ -248,14 +248,24 @@ class HUE(SmartPlugin):
         # zunächst einmal die installation der dimmroutine
         if 'hue_dim_max' in item.conf:
             # DPT3 dimming requested
+            # Check if parent is a dimmable item
+            parent = item.return_parent()
+            hueSend = parent.conf.get('hue_send')
+            if hueSend is None:
+                hueSend = parent.conf.get('hue_send_group')
+            if hueSend is None or hueSend not in self._dimmKeys:
+                self.logger.error('dimmenDPT3: need hue {0}} item as parent'.format(*self._dimmKeys))
+                return None
+
             # Set defaults if not already set
             for key,val in [('hue_dim_step', '25'), ('hue_dim_time', '1'), ('hue_dim_min', '1'), ('hue_transitionTime',self._hueDefaultTransitionTime)]:
                 if key not in item.conf:
                     self.logger.warning('dimmenDPT3: no {} defined in item [{}] using default {}'.format(key,item.id(),val))
                     item.conf[key] = val
-            if False:
-                # Check if parent is bri item
-                parent = item.return_parent()
+
+            if self._natural:
+                # Check if grandparent is a on item
+                parent = parent.return_parent()
                 hueSend = parent.conf.get('hue_send')
                 if hueSend is not None:
                     hueSend = parent.conf.get('hue_send_group')
