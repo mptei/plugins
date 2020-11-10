@@ -269,10 +269,10 @@ class HUE(SmartPlugin):
                 # Check if grandparent is a on item
                 parent = parent.return_parent()
                 hueSend = parent.conf.get('hue_send')
-                if hueSend is not None:
+                if hueSend is None:
                     hueSend = parent.conf.get('hue_send_group')
-                if hueSend is None or hueSend == 'bri':
-                    self.logger.error('dimmenDPT3: need hue bri item as parent')
+                if hueSend is None or hueSend != 'on':
+                    self.logger.error('dimmenDPT3KNX: need hue on item as grandparent')
                     return None
                 return self.dimmenDPT3KNX
             else:
@@ -562,9 +562,9 @@ class HUE(SmartPlugin):
                     targetVal = float(item.conf['hue_dim_max'])
                 else:
                     targetVal = float(item.conf['hue_dim_min'])
-                valueDimStep = float(item.conf['hue_dim_step'])
-                valueDimTime = float(item.conf['hue_dim_time'])
                 if not parent._fading:
+                    valueDimStep = float(item.conf['hue_dim_step'])
+                    valueDimTime = float(item.conf['hue_dim_time'])
                     self.logger.debug('Dimm item {0} to {1} with step {2} and step time {3}'.format(parent.id(), targetVal, valueDimStep, valueDimTime))
                     parent.fade(targetVal, valueDimStep, valueDimTime)
             else:
@@ -580,48 +580,39 @@ class HUE(SmartPlugin):
         # fallunterscheidung dimmen oder stop
         self.logger.debug('dimm DPT3 item {0}, caller {1}, source {2} => {3}'.format(item.id(),caller,source,item()))
         if caller != 'HUE':
-            # auswertung der list werte für die KNX daten
-            # [1] steht für das dimmen
-            # [0] für die richtung
-            # es wird die fading function verwendet
+            # Determine bri and on item                
             hueBriItem = item.return_parent()
-            hueBridgeId = parent.conf['hue_bridge_id']
-            hueIndex = hueBridgeId+'.'
-            hueId = parent.conf.get('hue_send')
+            hueOnItem = hueBriItem.return_parent()
+            hueId = hueOnItem.conf.get('hue_send')
+            # Determine setter method
             if hueId is not None:
                 # lamp item
-                hueItems = self._sendLampItems
+                hueId = hueOnItem.conf['hue_id']
                 stateSetter = self._set_lamp_state
             else:
                 # group item
-                hueId = parent.conf['hue_send_group']
-                hueItems = self._sendGroupItems
+                hueId = hueOnItem.conf.get('hue_group_id')
                 stateSetter = self._set_group_state
-            hueIndex += hueId
-            hueOnItem = hueItems[hueIndex+'.on']
 
             if item()[1] == 1:
-                # dimmen
-                hueTransitionTime = item.conf.get('hue_transitionTime')
-                if hueTransitionTime is not None:
-                    hueTransitionTime = int(float(hueTransitionTime) * 10)
-                else:
-                    hueTransitionTime = int(self._hueDefaultTransitionTime * 10)
+                # dimming
+                hueTransitionTime = float(item.conf.get('hue_transitionTime')*10)
                 valueMin = float(item.conf['hue_dim_min'])
-                if not hueOnItem() and item()[0] == 1:
-                    # Switch lamp on with lowest brightness
-                    stateSetter(hueBridgeId, hueId, {'on': True , 'bri': valueMin, 'transitiontime': hueTransitionTime})
-                    hueBriItem(valueMin,'HUE','DPT3 start on min')
-                    hueOnItem(True,'HUE','DPT3 start on min')
                 if item()[0] == 1:
                     # up
+                    if not hueOnItem():
+                        # Switch lamp on with lowest brightness
+                        hueBridgeId = hueOnItem.conf['hue_bridge_id']
+                        stateSetter(hueBridgeId, hueId, {'on': True , 'bri': valueMin, 'transitiontime': hueTransitionTime})
+                        hueBriItem(valueMin,'HUE','DPT3 start on min')
+                        hueOnItem(True,'HUE','DPT3 start on min')
                     targetVal = float(item.conf['hue_dim_max'])
                 else:
                     # down
                     targetVal = valueMin
-                valueDimStep = float(item.conf['hue_dim_step'])
-                valueDimTime = float(item.conf['hue_dim_time'])
                 if not hueBriItem._fading:
+                    valueDimStep = float(item.conf['hue_dim_step'])
+                    valueDimTime = float(item.conf['hue_dim_time'])
                     self.logger.debug('Dimm item {0} to {1} with step {2} and step time {3}'.format(hueBriItem.id(), targetVal, valueDimStep, valueDimTime))
                     hueBriItem.fade(targetVal, valueDimStep, valueDimTime)
             else:
