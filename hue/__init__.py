@@ -138,6 +138,8 @@ class HUE(SmartPlugin):
         self.Red = [XY(0.674, 0.322), XY(0.703, 0.296), XY(1.0, 0.0)]
         self.Lime =[XY(0.408, 0.517), XY(0.214, 0.709), XY(0.703, 1.0)]
         self.Blue =[XY(0.168, 0.041), XY(0.139, 0.081), XY(0.0, 0.0)]
+        # Flag for 'natural' behavior
+        self._natural = True
         # Konfigurationen zur laufzeit
         # scheduler für das polling des status der lampen über die hue bridge
         self.scheduler_add('update-lamps', self._update_lamps, cycle = self._cycle_lampsGroups)
@@ -437,7 +439,7 @@ class HUE(SmartPlugin):
                     options.update({'ct': ct})
 
                 briItem = sendItems.get(hueIndex+'.bri')
-                if True:
+                if self._natural:
                     # Switch on with full brightness
                     options.update({'bri': 255})
                     if briItem is not None:
@@ -491,6 +493,11 @@ class HUE(SmartPlugin):
                 # sonderfall, wenn der status die transition erst ausgeöst hat, dann muss die gruppe
                 # auf der hue seite erst ausgeschaltet werden
                 stateSetter(hueBridgeId, hueId, {'on': False , 'transitiontime': hueTransitionTime, 'bri': 0})
+                if self._natural:
+                    briItem = sendItems.get(hueIndex+'.bri')
+                    if briItem is not None:
+                        # Set brightness to 0
+                        briItem(0,'HUE','set to 0 on switch off')
             else:
                 # die lampe kann auch über das senden bri angemacht werden
                 if hueSend == 'bri' and value != 0:
