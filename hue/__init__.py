@@ -809,9 +809,9 @@ class HUE(SmartPlugin):
         # hier eine interaktive routing für di ecli, um den user herauszubekommen,
         # mit dem die szenen gesetzt worden sind, um ihn dann als user für das plugin einzusetzen
         # und jetzt alle szenen
-        returnValues = self._get_webcontent(hueBridgeId, '/scenes')
+        returnValues = self._get_web_content(hueBridgeId, '/scenes')
         self.logger.warning('get_config: Scenes {0}'.format(returnValues))
-        returnValues = self._get_webcontent(hueBridgeId, '/groups')
+        returnValues = self._get_web_content(hueBridgeId, '/groups')
         self.logger.warning('get_config: Groups {0}'.format(returnValues))
         return returnValues
 
