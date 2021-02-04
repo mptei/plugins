@@ -99,6 +99,9 @@ item_attributes:
     hue_dim_max:
         type: num
 
+    hue_dim_min:
+        type: num
+
     hue_dim_step:
         type: num
 

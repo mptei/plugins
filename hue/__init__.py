@@ -260,7 +260,7 @@ class HUE(SmartPlugin):
                 return None
 
             # Set defaults if not already set
-            for key,val in [('hue_dim_step', '25'), ('hue_dim_time', '1'), ('hue_dim_min', '1'), ('hue_transitionTime',self._hueDefaultTransitionTime)]:
+            for key,val in [('hue_dim_step', '25'), ('hue_dim_time', '1'), ('hue_dim_min', '1'), ('hue_transitiontime',self._hueDefaultTransitionTime)]:
                 if key not in item.conf:
                     self.logger.warning('dimmenDPT3: no {} defined in item [{}] using default {}'.format(key,item.id(),val))
                     item.conf[key] = val
@@ -389,7 +389,7 @@ class HUE(SmartPlugin):
             hueSend = item.conf['hue_send']
             hueLampType = item.conf.get('hue_lamp_type')
 
-        hueTransitionTime = item.conf.get('hue_transitionTime')
+        hueTransitionTime = item.conf.get('hue_transitiontime')
         if hueTransitionTime is not None:
             hueTransitionTime = int(float(hueTransitionTime) * 10)
         else:
@@ -596,7 +596,7 @@ class HUE(SmartPlugin):
 
             if item()[1] == 1:
                 # dimming
-                hueTransitionTime = float(item.conf.get('hue_transitionTime')*10)
+                hueTransitionTime = float(item.conf.get('hue_transitiontime')*10)
                 valueMin = float(item.conf['hue_dim_min'])
                 if item()[0] == 1:
                     # up
