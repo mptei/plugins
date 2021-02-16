@@ -196,6 +196,11 @@ item_structs:
         name: Vorlage-Struktur für eine Hue Leuchte (warm white)
         struct: hue2._light_basic
 
+        ct:
+            type: num
+            hue2_resource@instance: ..:.
+            hue2_id@instance: ..:.
+            hue2_function@instance: ct
 
     light_xy:
         name: Vorlage-Struktur für eine Hue Leuchte (Farbe nur über xy)
@@ -305,12 +310,6 @@ item_structs:
             hue2_resource@instance: ..:.
             hue2_id@instance: ..:.
             hue2_function@instance: bri
-
-        ct:
-            type: num
-            hue2_resource@instance: ..:.
-            hue2_id@instance: ..:.
-            hue2_function@instance: ct
 
         colormode:
             type: str
