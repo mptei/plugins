@@ -1,0 +1,299 @@
+# Metadata for the plugin
+plugin:
+    # Global plugin attributes
+    type: gateway                   # plugin type (gateway, interface, protocol, system, web)
+    description:
+        de: 'Anbindung einer Easee Wallbox'
+        en: 'Gateway for Easee Wallbox'
+    maintainer: msinn
+#    tester:                         # Who tests this plugin?
+    state: development               # change to ready when done with development
+#    keywords: iot xyz
+#    documentation: https://github.com/smarthomeNG/smarthome/wiki/CLI-Plugin        # url of documentation (wiki) page
+#    support: https://knx-user-forum.de/forum/supportforen/smarthome-py/...
+
+    version: 0.0.1                  # Plugin version (must match the version specified in __init__.py)
+    sh_minversion: 1.8.0            # minimum shNG version to use this plugin
+#    sh_maxversion:                 # maximum shNG version to use this plugin (leave empty if latest)
+#    py_minversion: 3.6             # minimum Python version to use for this plugin
+#    py_maxversion:                 # maximum Python version to use for this plugin (leave empty if latest)
+    multi_instance: True            # plugin supports multi instance
+    restartable: unknown
+    configuration_needed: False     # False: The plugin will be enabled by the Admin GUI without configuration
+    classname: EaseeCloud           # class containing the plugin
+
+parameters:
+    # Definition of parameters to be configured in etc/plugin.yaml (enter 'parameters: NONE', if section should be empty)
+    polltime:
+        type: int
+        default: 120
+        valid_min: 1
+        description:
+            de: 'Zykluszeit in Sekunden (kurz) für die Abfrage von Informationen'
+            en: 'Polltime in seconds (short) for polling information'
+
+    credentials:
+        type: str
+        gui_type: readonly
+        description:
+            de: 'Verschlüsselte Zugangsdaten um auf die Easee Cloud zuzugreifen.
+                 Dieser Parameter wird durch das Plugin in den Konfigurationsdaten abgelegt. Er ist in der Admin GUI nicht änderbar'
+            en: 'Encrypted credentials to access to the Easee cloud
+                 The plugin ist saving this data to the configuration. This parameter cannot be changed in the admin GUI'
+
+item_attributes:
+    # Definition of item attributes defined by this plugin (enter 'item_attributes: NONE', if section should be empty)
+
+    easee_type:
+        type: str
+        description:
+            de: "Typ des Easee-Objekts"
+            en: "Type of easee item"
+        valid_list:
+            - charger
+
+    easee_id:
+        type: str
+        description:
+            de: "ID des Easee-Objekts"
+            en: "Easee object id"
+
+    easee_function:
+        type: str
+        description:
+            de: "Anzusteuernde Funktion für das gewählte Easee-Objekt"
+            en: "Function of the selected easee object that shall be read/controlled"
+
+item_structs: 
+
+    charger:
+        name: Template for easee charger
+        type: foo
+        easee_type@instance: charger
+
+        errorString:
+            type: str
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: ErrorString
+        
+        circuitMaxCurrentP1:
+            type: num
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: config_circuitMaxCurrentP1 
+
+        circuitMaxCurrentP2:
+            type: num
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: config_circuitMaxCurrentP2 
+
+        circuitMaxCurrentP3:
+            type: num
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: config_circuitMaxCurrentP3 
+
+        enableIdleCurrent:
+            type: bool
+            name: Enable current even when loading is finished
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: config_enableIdleCurrent 
+
+        power:
+            type: num
+            name: Power of wallbox in kW
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_totalPower
+        
+        lifetimeEnergy:
+            type: num
+            name: Sum of energy of this wallbox
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_lifetimeEnergy
+
+        sessionEnergy:
+            type: num
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_sessionEnergy
+        
+        energyPerHour:
+            type: num
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_energyPerHour
+        
+        voltage:
+            type: num
+            name: Voltage from grid
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_inVoltageT2T3
+
+        dynamicChargerCurrent:
+            type: num
+            name: Currently allowed maximum current for charger; resets on restart
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_dynamicChargerCurrent
+
+        dynamicCircuitCurrentP1:
+            type: num
+            name: Currently allowed maximum current for the circuit of the charger
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_dynamicCircuitCurrentP1
+
+        maxChargerCurrent:
+            type: num
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: config_maxChargerCurrent 
+
+        outputCurrent:
+            type: num
+            name: Output current as stated to the car via pilot
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_outputCurrent 
+
+        smartCharging:
+            type: bool
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_smartCharging 
+
+        cableLocked:
+            type: bool
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_cableLocked 
+
+        cableRating:
+            type: num
+            name: For how many amperes the connected cable is rated
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_cableRating
+
+        ledStripBrightness:
+            type: num
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: config_ledStripBrightness
+
+        tempMax:
+            type: num
+            name: Temperature in wallbox
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_tempMax
+
+        isEnabled:
+            type: bool
+            name: Status if charger is enabled
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: config_isEnabled
+
+        current:
+            type: num
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_inCurrentT2
+
+        circuitCurrentL1:
+            type: num
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_circuitTotalPhaseConductorCurrentL1
+
+        reasonForNoCurrent:
+            type: num
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_reasonForNoCurrent
+            on_update:
+                - ..reasonForNoCurrent_Txt = 'OK' if value == 0 else 'MaxCircuitCurrentTooLow' if value == 1 else 'MaxDynamicCircuitCurrentTooLow' if value == 2 else 'MaxDynamicOfflineFallbackCircuitCurrentTooLow' if value == 3 else 'CircuitFuseTooLow' if value == 4 else 'WaitingInQueue' if value == 5 else 'Warten auf das Fahrzeug' if value == 6 else 'IllegalGridType' if value == 7 else 'PrimaryUnitHasNotReceivedCurrentRequestFromSecondaryUnit' if value == 8 else 'SecondaryUnitNotRequestingCurrent' if value == 50 else 'Maximaler Ladestrom zu gering' if value == 51 else 'Maximaler dynamischer Ladestrom zu gering' if value == 52 else 'Wallbox deaktiviert' if value == 53 else 'PendingScheduledCharging' if value == 54 else 'Warten auf Genehmigung' if value == 55 else 'ChargerInErrorState' if value == 56 else 'Unknown {}'.format(value)
+
+        reasonForNoCurrent_Txt:
+            type: str
+
+        chargerOpMode:
+            type: num
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_chargerOpMode
+            on_update:
+                - ..chargerOpMode_Txt = 'Not connected' if value == 1 else 'Connected' if value == 2 else 'Charging' if value == 3 else 'Completed' if value == 4 else 'Error' if value == 5 else 'ReadyToCharge' if value == 6 else 'Unknown {}'.format(value)
+
+        chargerOpMode_Txt:
+            type: str
+            
+        startCharging:
+            type: bool
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: startCharging
+            enforce_updates: 'yes'
+
+        stopCharging:
+            type: bool
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: stopCharging
+            enforce_updates: 'yes'
+
+        resumeCharging:
+            type: bool
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: resumeCharging
+            enforce_updates: 'yes'
+
+        pauseCharging:
+            type: bool
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: pauseCharging
+            enforce_updates: 'yes'
+
+        latestPulse:
+            type: str
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_latestPulse
+
+        isOnline:
+            type: bool
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_isOnline
+
+    site:
+        name: Template for easee site
+        type: foo
+        easee_type@instance: site
+
+        dynamicCircuitCurrentP1:
+            type: num
+            name: Currently allowed maximum current for site
+            easee_type@instance: ..:.
+            easee_id@instance: ..:.
+            easee_function@instance: state_dynamicCircuitCurrentP1
+
+    #item_attribute_prefixes:
+    # Definition of item attributes that only have a common prefix (enter 'item_attribute_prefixes: NONE' or ommit this section, if section should be empty)
+    # NOTE: This section should only be used, if really nessesary (e.g. for the stateengine plugin)
+
+plugin_functions: NONE
+    # Definition of plugin functions defined by this plugin (enter 'plugin_functions: NONE', if section should be empty)
+
+logic_parameters: NONE
+    # Definition of logic parameters defined by this plugin (enter 'logic_parameters: NONE', if section should be empty)
+

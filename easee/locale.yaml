@@ -1,0 +1,36 @@
+# translations for the web interface
+plugin_translations:
+    # Translations for the plugin specially for the web interface
+    'Easee User':             {'en': '=', 'de': 'Easee Nutzer'}
+    'Query cycle (cloud)':    {'en': '=', 'de': 'Abfragezyklus (Cloud)'}
+    'Type':                   {'en': '=', 'de': 'Typ'}
+    'Value':                  {'en': '=', 'de': 'Wert'}
+    'Easee type':             {'en': '=', 'de': 'Easee Typ'}
+    'Easee id':               {'en': '=', 'de': 'Easee Id'}
+    'Easee function':         {'en': '=', 'de': 'Easee Funktion'}
+    'Max Current':            {'en': '=', 'de': 'Max. Strom'}
+    'Site':                   {'en': '=', 'de': 'Site'}
+    'Circuit Rated Current':  {'en': '=', 'de': 'Schaltungsnennstrom'}
+    'Timestamp':              {'en': '=', 'de': 'Zeitstempel'}
+    'Datatype':               {'en': '=', 'de': 'Datentyp'}
+    'Cloud service outage.':  {'en': '=', 'de': 'Cloud-Ausfall.'}
+    'Please check Easee cloud.': {'en': '=', 'de': 'Bitte die Easee-Cloud prüfen.'}
+    'Login':                  {'en': '=', 'de': 'Anmelden'}
+    'Easee credentials:':     {'en': '=', 'de': 'Easee Anmeldeinforamtionen:'}
+    'User':                   {'en': '=', 'de': 'Nutzer'}
+    'Password':               {'en': '=', 'de': 'Passwort'}
+    'Store to Config':        {'en': '=', 'de': 'In Konfiguration speichern'}
+    'Logout from Easee account?': {'en': '=', 'de': 'Vom Easee-Konto abmelden?'}
+    'Logout':                 {'en': '=', 'de': 'Abmelden'}
+    'Close':                  {'en': '=', 'de': 'Schließen'}
+    'Chargers':               {'en': '=', 'de': 'Ladegeräte'}
+    'Account':                {'en': '=', 'de': 'Konto'}
+
+    # Alternative format for translations of longer texts:
+    'Not logged in into easee account.':
+        en: '='
+        de: 'Nicht im Easee-Konto angemeldet.'
+    'On start please wait for login. Else press login button and log in.':
+        en: '='
+        de: 'Beim Start bitte auf die Anmeldung warten. Ansonsten bitte den Anmeldeknopf drücken.'
+
