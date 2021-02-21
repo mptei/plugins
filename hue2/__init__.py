@@ -111,7 +111,7 @@ class Hue2(SmartPlugin):
             # find bridge using its serial number
             self.bridge = self.get_data_from_discovered_bridges(self.bridge_serial)
             if self.bridge.get('serialNumber', '') == '':
-                self.logger.warning("Configured bridge {} is not in the list of discovered bridges, starting second discovery")
+                self.logger.warning("Configured bridge {} is not in the list of discovered bridges, starting second discovery".format(self.bridge_serial))
                 self.discovered_bridges = self.discover_bridges()
 
                 if self.bridge.get('serialNumber', '') == '':
