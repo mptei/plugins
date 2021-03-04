@@ -282,8 +282,8 @@ class SmartVisuGenerator:
 
     def create_menuentry(self, menu, entry_name, item_path, separator, img_name, nav_aside, nav_aside2, from_navconfig=False):
         for menu_entry in self.navigation[menu]:
-            if menu_entry['name'] == entry_name:
-                if menu_entry.get('img', '') == ''and menu_entry['img_set'] == False:
+            if menu_entry['path'] == item_path:
+                if menu_entry.get('img', '') == '' and menu_entry['img_set'] == False:
                     menu_entry['img'] = img_name
                 if menu_entry['item_path'] == '':
                     menu_entry['item_path'] = item_path
@@ -291,13 +291,15 @@ class SmartVisuGenerator:
                     menu_entry['nav_aside'] = nav_aside
                 if menu_entry.get('nav_aside2', '') == '' and menu_entry.get('nav_aside2_set', False) == False:
                     menu_entry['nav_aside2'] = nav_aside2
+                    menu_entry['nav_aside2_set'] = True
                 return menu_entry
 
         menu_entry = {}
+        menu_entry['path'] = item_path
         menu_entry['name'] = entry_name
         menu_entry['item_path'] = item_path
         menu_entry['separator'] = separator
-        menu_entry['page'] = menu + '.' + entry_name
+        menu_entry['page'] = menu + '.' + item_path
         for ch in [' ',':','/','\\']:
             if ch in menu_entry['page']:
                 menu_entry['page'] = menu_entry['page'].replace(ch, '_')
@@ -306,8 +308,11 @@ class SmartVisuGenerator:
 
         if not from_navconfig:
             menu_entry['img'] = img_name
+            menu_entry['img_set'] = True
             menu_entry['nav_aside'] = nav_aside
+            menu_entry['nav_aside_set'] = True
             menu_entry['nav_aside2'] = nav_aside2
+            menu_entry['nav_aside2_set'] = True
         else:
             menu_entry['img'] = ''
             menu_entry['img_set'] = False
@@ -331,8 +336,8 @@ class SmartVisuGenerator:
 
     def add_menuentry_to_list(self, menu, menu_entry):
         for entry in self.navigation[menu]:
-            if entry['name'] == menu_entry['name']:
-                self.logger.debug("{}: add_menuentry_to_list: Found menu {}, entry {}".format(self.plugin_instance.get_instance_name(), menu, menu_entry['name']))
+            if entry['path'] == menu_entry['path']:
+                self.logger.debug("{}: add_menuentry_to_list: Found menu {}, entry {}".format(self.plugin_instance.get_instance_name(), menu, menu_entry['path']))
                 return
 
         self.navigation[menu].append(menu_entry)
